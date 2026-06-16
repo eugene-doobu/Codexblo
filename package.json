@@ -1,0 +1,24 @@
+{
+  "name": "codexblo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser ARPG prototype focused on dungeon-first vertical slices.",
+  "scripts": {
+    "dev": "vite",
+    "dev:lan": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "generate:assets": "node scripts/generate-cathedral-assets.mjs",
+    "check": "npm run generate:assets && npm test && npm run build"
+  },
+  "dependencies": {
+    "phaser": "4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "25.9.3",
+    "typescript": "6.0.3",
+    "vite": "8.0.16",
+    "vitest": "4.1.9"
+  }
+}

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="72" height="48" viewBox="0 0 72 48" role="img" aria-label="Cathedral door tile">
+    <title>Cathedral door tile</title>
+    <rect width="72" height="48" fill="none"/>
+    
+      <path d="M 36 2 L 68 24 L 36 44 L 4 24 Z" fill="#292b33" stroke="#494d5a" stroke-width="2"/>
+      <path d="M 24 16 H 48 V 36 H 24 Z" fill="#3a2417" stroke="#875d37" stroke-width="3"/>
+      <circle cx="44" cy="29" r="3" fill="#c9a35b"/>
+  </svg>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="72" height="48" viewBox="0 0 72 48" role="img" aria-label="Cathedral floor tile">
+    <title>Cathedral floor tile</title>
+    <rect width="72" height="48" fill="none"/>
+    
+      <path d="M 36 2 L 68 24 L 36 44 L 4 24 Z" fill="#2f3138" stroke="#424650" stroke-width="2"/>
+      <path d="M 16 24 H 56" stroke="#24272e" stroke-width="2" opacity="0.55"/>
+      <path d="M 36 8 V 40" stroke="#24272e" stroke-width="1.5" opacity="0.35"/>
+  </svg>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="72" height="48" viewBox="0 0 72 48" role="img" aria-label="Cathedral wall block">
+    <title>Cathedral wall block</title>
+    <rect width="72" height="48" fill="none"/>
+    
+      <path d="M 36 2 L 68 24 L 36 44 L 4 24 Z" fill="#2b2d35" stroke="#555866" stroke-width="2"/>
+      <path d="M 12 24 L 36 7 L 60 24 L 60 40 L 36 46 L 12 40 Z" fill="#181a20" stroke="#555866" stroke-width="2"/>
+      <path d="M 36 7 V 46" stroke="#555866" stroke-width="1" opacity="0.7"/>
+  </svg>

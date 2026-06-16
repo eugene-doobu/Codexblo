@@ -1,0 +1,29 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #08090c;
+  color: #eceff4;
+}
+
+* { box-sizing: border-box; }
+html, body, #app-shell { margin: 0; min-height: 100%; height: 100%; overflow: hidden; }
+body { background: radial-gradient(circle at 50% 20%, #1e2531, #07080b 70%); }
+#app-shell { display: grid; grid-template-columns: minmax(300px, 360px) 1fr; width: 100vw; height: 100vh; }
+#lab-ui { background: rgba(9, 12, 17, 0.92); border-right: 1px solid rgba(255,255,255,0.08); padding: 16px; overflow: auto; }
+#game-host, #game { position: relative; width: 100%; height: 100%; }
+#game canvas { display: block; width: 100%; height: 100%; }
+.lab-panel h1 { margin: 0 0 8px; font-size: 1.25rem; }
+.lab-panel p { color: #aeb6c7; line-height: 1.45; }
+.lab-control { display: grid; gap: 6px; margin: 12px 0; }
+.lab-control label { color: #cbd3e3; font-size: 0.84rem; }
+.lab-control input, .lab-control select, .lab-control button, .lab-control textarea {
+  width: 100%; border: 1px solid #323949; border-radius: 8px; background: #141923; color: #f0f4ff; padding: 9px 10px;
+}
+.lab-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.lab-control button, .lab-row button { cursor: pointer; background: #24364f; border-color: #42628b; font-weight: 700; }
+.lab-control button:hover, .lab-row button:hover { background: #2e4566; }
+.lab-check { display: flex; gap: 8px; align-items: center; margin: 8px 0; color: #d7ddeb; }
+.lab-check input { width: auto; }
+.lab-status { margin-top: 14px; padding: 10px; border-radius: 10px; background: rgba(255,255,255,0.05); white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.78rem; color: #cdd6e8; }
+.lab-status.pass { border: 1px solid rgba(141, 233, 155, 0.28); color: #d6f8dc; }
+.lab-status.fail { border: 1px solid rgba(255, 140, 140, 0.34); color: #ffd2d2; }

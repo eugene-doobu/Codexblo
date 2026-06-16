@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="72" height="48" viewBox="0 0 72 48" role="img" aria-label="Cathedral stair up tile">
+    <title>Cathedral stair up tile</title>
+    <rect width="72" height="48" fill="none"/>
+    
+      <path d="M 36 2 L 68 24 L 36 44 L 4 24 Z" fill="#363947" stroke="#c0b38b" stroke-width="2"/>
+      <path d="M 22 31 H 50 M 26 25 H 46 M 30 19 H 42" stroke="#c0b38b" stroke-width="4" stroke-linecap="round"/>
+      <path d="M 36 12 L 45 23 H 27 Z" fill="#22242c" opacity="0.75"/>
+  </svg>
