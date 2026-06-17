@@ -7,8 +7,13 @@ import {
   type DungeonType,
   type SeedMode,
 } from '../../domain/world/dungeon-generator';
-import { DungeonDebugRenderer, type DebugOverlayOptions } from '../../presentation/dev/dungeon-debug-overlay';
+import { DungeonDebugRenderer, type DebugOverlayOptions, type DungeonRenderSnapshot } from '../../presentation/dev/dungeon-debug-overlay';
+import { ISO_TILE_FOOTPRINT, isoGridBounds, toIso, type IsoBounds } from '../../presentation/dev/isometric-projection';
 import { requestFromLocation } from '../../runtime/route';
+
+const CAMERA_VIEW_PADDING = 96;
+const MIN_CAMERA_ZOOM = 0.22;
+const MAX_CAMERA_ZOOM = 1.25;
 
 export class DungeonGenerationLabScene extends Phaser.Scene {
   private dungeonRenderer?: DungeonDebugRenderer;
@@ -30,15 +35,36 @@ export class DungeonGenerationLabScene extends Phaser.Scene {
 
   private generate(request: DungeonGenerationRequest, options: DebugOverlayOptions): void {
     const result = generateDungeon(request);
-    this.dungeonRenderer?.render(result, options);
+    const renderSnapshot = this.dungeonRenderer?.render(result, options);
     this.controls?.update(result);
-    this.fitCamera(result);
+    const cameraSnapshot = this.fitCamera(result);
+    if (renderSnapshot) {
+      publishLabDebugSnapshot(result, renderSnapshot, cameraSnapshot);
+    }
   }
 
-  private fitCamera(result: DungeonGenerationResult): void {
+  private fitCamera(result: DungeonGenerationResult): DungeonCameraSnapshot {
     const camera = this.cameras.main;
-    camera.setZoom(0.72);
-    camera.centerOn(result.level.width * 36, result.level.height * 13);
+    const gridSize = { width: result.level.width, height: result.level.height };
+    const contentBounds = isoGridBounds(gridSize, CAMERA_VIEW_PADDING);
+    const zoom = cameraFitZoom(camera.width, camera.height, contentBounds);
+    const cameraBounds = expandBoundsForViewport(contentBounds, camera.width / zoom, camera.height / zoom);
+    const scrollX = contentBounds.centerX - camera.width / (2 * zoom);
+    const scrollY = contentBounds.centerY - camera.height / (2 * zoom);
+
+    camera.setZoom(zoom);
+    camera.setBounds(cameraBounds.left, cameraBounds.top, cameraBounds.width, cameraBounds.height);
+    camera.setScroll(scrollX, scrollY);
+
+    return {
+      contentBounds,
+      bounds: cameraBounds,
+      scrollX: camera.scrollX,
+      scrollY: camera.scrollY,
+      zoom: camera.zoom,
+      viewportWidth: camera.width,
+      viewportHeight: camera.height,
+    };
   }
 
   private registerCameraControls(): void {
@@ -61,7 +87,7 @@ export class DungeonGenerationLabScene extends Phaser.Scene {
     });
     this.input.on('wheel', (_pointer: Phaser.Input.Pointer, _objects: Phaser.GameObjects.GameObject[], _dx: number, dy: number) => {
       const camera = this.cameras.main;
-      camera.setZoom(Phaser.Math.Clamp(camera.zoom + (dy > 0 ? -0.08 : 0.08), 0.35, 2.2));
+      camera.setZoom(Phaser.Math.Clamp(camera.zoom + (dy > 0 ? -0.08 : 0.08), MIN_CAMERA_ZOOM, 2.2));
     });
     this.input.keyboard?.on('keydown-R', () => this.controls?.randomize());
     this.input.keyboard?.on('keydown-ENTER', () => this.controls?.submit());
@@ -69,6 +95,99 @@ export class DungeonGenerationLabScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-G', () => this.controls?.toggle('showGrid'));
     this.input.keyboard?.on('keydown-V', () => this.controls?.toggle('showConnectivity'));
   }
+}
+
+interface DungeonCameraSnapshot {
+  contentBounds: IsoBounds;
+  bounds: IsoBounds;
+  scrollX: number;
+  scrollY: number;
+  zoom: number;
+  viewportWidth: number;
+  viewportHeight: number;
+}
+
+interface DungeonLabDebugSnapshot {
+  checksum: string;
+  seed: number;
+  level: {
+    width: number;
+    height: number;
+    expectedTileCount: number;
+  };
+  validationOk: boolean;
+  render: DungeonRenderSnapshot;
+  camera: DungeonCameraSnapshot;
+  floorPlane: {
+    eastStep: { x: number; y: number };
+    southStep: { x: number; y: number };
+    footprint: typeof ISO_TILE_FOOTPRINT;
+  };
+}
+
+declare global {
+  interface Window {
+    __DUNGEON_LAB_DEBUG__?: DungeonLabDebugSnapshot;
+  }
+}
+
+function cameraFitZoom(viewportWidth: number, viewportHeight: number, bounds: IsoBounds): number {
+  const availableWidth = Math.max(1, viewportWidth - CAMERA_VIEW_PADDING);
+  const availableHeight = Math.max(1, viewportHeight - CAMERA_VIEW_PADDING);
+  return Phaser.Math.Clamp(
+    Math.min(availableWidth / bounds.width, availableHeight / bounds.height),
+    MIN_CAMERA_ZOOM,
+    MAX_CAMERA_ZOOM,
+  );
+}
+
+function expandBoundsForViewport(bounds: IsoBounds, viewportWorldWidth: number, viewportWorldHeight: number): IsoBounds {
+  const expandX = Math.max(0, viewportWorldWidth - bounds.width) / 2;
+  const expandY = Math.max(0, viewportWorldHeight - bounds.height) / 2;
+  const left = bounds.left - expandX;
+  const top = bounds.top - expandY;
+  const right = bounds.right + expandX;
+  const bottom = bounds.bottom + expandY;
+
+  return {
+    left,
+    top,
+    right,
+    bottom,
+    width: right - left,
+    height: bottom - top,
+    centerX: bounds.centerX,
+    centerY: bounds.centerY,
+  };
+}
+
+function publishLabDebugSnapshot(
+  result: DungeonGenerationResult,
+  render: DungeonRenderSnapshot,
+  camera: DungeonCameraSnapshot,
+): void {
+  const gridSize = { width: result.level.width, height: result.level.height };
+  const origin = toIso({ x: 0, y: 0 }, gridSize);
+  const east = toIso({ x: 1, y: 0 }, gridSize);
+  const south = toIso({ x: 0, y: 1 }, gridSize);
+
+  window.__DUNGEON_LAB_DEBUG__ = {
+    checksum: result.level.checksum,
+    seed: result.seed,
+    level: {
+      width: result.level.width,
+      height: result.level.height,
+      expectedTileCount: result.level.width * result.level.height,
+    },
+    validationOk: result.validation.ok,
+    render,
+    camera,
+    floorPlane: {
+      eastStep: { x: east.x - origin.x, y: east.y - origin.y },
+      southStep: { x: south.x - origin.x, y: south.y - origin.y },
+      footprint: ISO_TILE_FOOTPRINT,
+    },
+  };
 }
 
 interface LabControls {

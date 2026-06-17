@@ -3,10 +3,7 @@ import type { GridPoint, GridRect } from '../../core/grid';
 import type { DungeonGenerationResult, TileKind } from '../../domain/world/dungeon-generator';
 import { isPassable } from '../../domain/world/dungeon-generator';
 import { TILE_ASSET_KEYS } from '../bindings/cathedral-assets';
-
-const TILE_WIDTH = 72;
-const TILE_HEIGHT = 48;
-const ISO_STEP_Y = 24;
+import { ISO_TILE_FOOTPRINT, type GridSize, toIso } from './isometric-projection';
 
 export interface DebugOverlayOptions {
   showGrid: boolean;
@@ -15,15 +12,32 @@ export interface DebugOverlayOptions {
   showZones: boolean;
 }
 
+export interface RenderedTileSnapshot {
+  x: number;
+  y: number;
+  tile: TileKind;
+  screenX: number;
+  screenY: number;
+  depth: number;
+}
+
+export interface DungeonRenderSnapshot {
+  gridSize: GridSize;
+  tileFootprint: typeof ISO_TILE_FOOTPRINT;
+  renderedTiles: readonly RenderedTileSnapshot[];
+}
+
 export class DungeonDebugRenderer {
   private readonly tileSprites: Phaser.GameObjects.Image[] = [];
   private overlay?: Phaser.GameObjects.Graphics;
 
   constructor(private readonly scene: Phaser.Scene) {}
 
-  render(result: DungeonGenerationResult, options: DebugOverlayOptions): void {
+  render(result: DungeonGenerationResult, options: DebugOverlayOptions): DungeonRenderSnapshot {
     this.clear();
     const { level } = result;
+    const gridSize = { width: level.width, height: level.height };
+    const renderedTiles: RenderedTileSnapshot[] = [];
 
     for (let y = 0; y < level.height; y += 1) {
       for (let x = 0; x < level.width; x += 1) {
@@ -31,12 +45,22 @@ export class DungeonDebugRenderer {
         if (tile === 'void' && !options.showGrid) {
           continue;
         }
-        const screen = toIso({ x, y }, level.width);
+        const screen = toIso({ x, y }, gridSize);
         const sprite = this.scene.add.image(screen.x, screen.y, TILE_ASSET_KEYS[tile]);
         sprite.setOrigin(0.5, 0.5);
-        sprite.setDepth(screen.y + depthBias(tile));
+        const depth = screen.y + depthBias(tile);
+        sprite.setDepth(depth);
         sprite.setAlpha(tile === 'void' ? 0.25 : 1);
+        sprite.setName(`tile-${x}-${y}-${tile}`);
+        sprite.setData({
+          gridX: x,
+          gridY: y,
+          tile,
+          floorPlaneX: screen.x,
+          floorPlaneY: screen.y,
+        });
         this.tileSprites.push(sprite);
+        renderedTiles.push({ x, y, tile, screenX: screen.x, screenY: screen.y, depth });
       }
     }
 
@@ -55,6 +79,12 @@ export class DungeonDebugRenderer {
     if (options.showZones) {
       this.drawZones(result);
     }
+
+    return {
+      gridSize,
+      tileFootprint: ISO_TILE_FOOTPRINT,
+      renderedTiles,
+    };
   }
 
   clear(): void {
@@ -70,10 +100,11 @@ export class DungeonDebugRenderer {
     if (!this.overlay) {
       return;
     }
+    const gridSize = { width, height };
     this.overlay.lineStyle(1, 0x6b7280, 0.2);
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) {
-        this.drawDiamond({ x, y }, width, 0x6b7280, 0.16);
+        this.drawDiamond({ x, y }, gridSize, 0x6b7280, 0.16);
       }
     }
   }
@@ -85,7 +116,7 @@ export class DungeonDebugRenderer {
     for (let y = 0; y < result.level.height; y += 1) {
       for (let x = 0; x < result.level.width; x += 1) {
         if (!isPassable(result.level.tiles[y][x])) {
-          this.fillDiamond({ x, y }, result.level.width, 0xff375f, 0.16);
+          this.fillDiamond({ x, y }, result.level, 0xff375f, 0.16);
         }
       }
     }
@@ -96,10 +127,10 @@ export class DungeonDebugRenderer {
       return;
     }
     for (const point of result.graph.reachableTiles) {
-      this.fillDiamond(point, result.level.width, 0x4ade80, 0.12);
+      this.fillDiamond(point, result.level, 0x4ade80, 0.12);
     }
     for (const point of result.graph.unreachablePassableTiles) {
-      this.fillDiamond(point, result.level.width, 0xff0000, 0.55);
+      this.fillDiamond(point, result.level, 0xff0000, 0.55);
     }
   }
 
@@ -113,51 +144,44 @@ export class DungeonDebugRenderer {
       questLock: 0xc084fc,
     } as const;
     for (const zone of result.level.zones) {
-      this.drawRect(zone.rect, result.level.width, colorByKind[zone.kind]);
+      this.drawRect(zone.rect, result.level, colorByKind[zone.kind]);
     }
   }
 
-  private drawRect(rect: GridRect, width: number, color: number): void {
+  private drawRect(rect: GridRect, gridSize: GridSize, color: number): void {
     for (let y = rect.y; y < rect.y + rect.height; y += 1) {
       for (let x = rect.x; x < rect.x + rect.width; x += 1) {
-        this.fillDiamond({ x, y }, width, color, 0.22);
+        this.fillDiamond({ x, y }, gridSize, color, 0.22);
       }
     }
   }
 
-  private drawDiamond(point: GridPoint, width: number, color: number, alpha: number): void {
+  private drawDiamond(point: GridPoint, gridSize: GridSize, color: number, alpha: number): void {
     if (!this.overlay) {
       return;
     }
-    const points = diamondPoints(point, width);
+    const points = diamondPoints(point, gridSize);
     this.overlay.lineStyle(1, color, alpha);
     this.overlay.strokePoints(points, true, true);
   }
 
-  private fillDiamond(point: GridPoint, width: number, color: number, alpha: number): void {
+  private fillDiamond(point: GridPoint, gridSize: GridSize, color: number, alpha: number): void {
     if (!this.overlay) {
       return;
     }
-    const points = diamondPoints(point, width);
+    const points = diamondPoints(point, gridSize);
     this.overlay.fillStyle(color, alpha);
     this.overlay.fillPoints(points, true, true);
   }
 }
 
-export function toIso(point: GridPoint, levelWidth: number): GridPoint {
-  return {
-    x: (point.x - point.y) * (TILE_WIDTH / 2) + levelWidth * (TILE_WIDTH / 2),
-    y: (point.x + point.y) * (TILE_HEIGHT / 4),
-  };
-}
-
-function diamondPoints(point: GridPoint, width: number): Phaser.Math.Vector2[] {
-  const center = toIso(point, width);
+function diamondPoints(point: GridPoint, gridSize: GridSize): Phaser.Math.Vector2[] {
+  const center = toIso(point, gridSize);
   return [
-    new Phaser.Math.Vector2(center.x, center.y - ISO_STEP_Y / 2),
-    new Phaser.Math.Vector2(center.x + TILE_WIDTH / 2, center.y),
-    new Phaser.Math.Vector2(center.x, center.y + ISO_STEP_Y / 2),
-    new Phaser.Math.Vector2(center.x - TILE_WIDTH / 2, center.y),
+    new Phaser.Math.Vector2(center.x, center.y - ISO_TILE_FOOTPRINT.halfHeight),
+    new Phaser.Math.Vector2(center.x + ISO_TILE_FOOTPRINT.halfWidth, center.y),
+    new Phaser.Math.Vector2(center.x, center.y + ISO_TILE_FOOTPRINT.halfHeight),
+    new Phaser.Math.Vector2(center.x - ISO_TILE_FOOTPRINT.halfWidth, center.y),
   ];
 }
 

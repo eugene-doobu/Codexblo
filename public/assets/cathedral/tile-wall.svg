@@ -2,7 +2,7 @@
     <title>Cathedral wall block</title>
     <rect width="72" height="48" fill="none"/>
     
-      <path d="M 36 2 L 68 24 L 36 44 L 4 24 Z" fill="#2b2d35" stroke="#555866" stroke-width="2"/>
-      <path d="M 12 24 L 36 7 L 60 24 L 60 40 L 36 46 L 12 40 Z" fill="#181a20" stroke="#555866" stroke-width="2"/>
-      <path d="M 36 7 V 46" stroke="#555866" stroke-width="1" opacity="0.7"/>
+      <path d="M 36 6 L 70 24 L 36 42 L 2 24 Z" fill="#2b2d35" stroke="#555866" stroke-width="2"/>
+      <path d="M 12 24 L 36 9 L 60 24 L 60 38 L 36 45 L 12 38 Z" fill="#181a20" stroke="#555866" stroke-width="2"/>
+      <path d="M 36 9 V 45" stroke="#555866" stroke-width="1" opacity="0.7"/>
   </svg>
