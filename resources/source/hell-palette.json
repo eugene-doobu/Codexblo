@@ -1,0 +1,12 @@
+{
+  "theme": "hell-lab-placeholder",
+  "tileSize": { "width": 72, "height": 48 },
+  "palette": {
+    "floor": ["#3c1714", "#7b3424", "#1b0908"],
+    "wall": ["#2a1112", "#b35a37", "#5b211b"],
+    "door": ["#4f1c14", "#d8893c", "#210807"],
+    "stairUp": ["#4a201a", "#f1b45b", "#240b08"],
+    "stairDown": ["#2a0e0b", "#b76e34", "#100504"],
+    "void": ["#050101", "#1a0504", "#000000"]
+  }
+}

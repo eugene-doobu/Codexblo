@@ -45,7 +45,12 @@ export type DungeonMinisetId =
   | 'WARPSTAIRS'
   | 'L3UP'
   | 'L3DOWN'
-  | 'L3HOLDWARP';
+  | 'L3HOLDWARP'
+  | 'L4USTAIRS'
+  | 'L4DSTAIRS'
+  | 'L4TWARP'
+  | 'L4PENTA'
+  | 'L4PENTA2';
 
 export interface DungeonMinisetPlacement {
   id: DungeonMinisetId;
@@ -228,17 +233,67 @@ export interface CavesGenerationMetadata {
   minisetPlacements: readonly DungeonMinisetPlacement[];
 }
 
-export interface PreviewGenerationMetadata {
-  familyId: Exclude<DungeonType, 'Cathedral' | 'Catacombs' | 'Caves'>;
-  generatorKind: 'preview-rooms';
+export interface HellGenerationMetadata {
+  familyId: 'Hell';
+  generatorKind: 'quadrant-mirror';
   attemptCount: number;
+  attemptSeed: number;
+  levelRange: {
+    min: 13;
+    max: 16;
+  };
+  workingQuadrant: {
+    width: 20;
+    height: 20;
+  };
+  mirrorAxes: {
+    vertical: 19.5;
+    horizontal: 19.5;
+  };
+  areaThreshold: 692;
+  floorArea: number;
+  connectedFloorCount: number;
+  firstRoom: {
+    size: {
+      width: number;
+      height: number;
+    };
+    position: GridPoint;
+  };
+  sideRoomAttemptsPerSide: 20;
+  sideRoomSizes: readonly [2, 4, 6];
+  innerBorderConnectors: {
+    horizontal: GridPoint;
+    vertical: GridPoint;
+  };
+  themeRoom: {
+    minSize: 7;
+    maxSize: 10;
+    floorTile: 6;
+    frequency: 8;
+    randomizeSize: true;
+    enabled: boolean;
+  };
+  townWarp: {
+    enabled: boolean;
+    levelNumber: 13;
+    placement?: DungeonMinisetPlacement;
+  };
+  hellGate: {
+    enabled: boolean;
+    levelNumber: 15;
+    placement?: DungeonMinisetPlacement;
+  };
+  protectedQuads: readonly GridRect[];
+  themeRooms: readonly GridRect[];
+  minisetPlacements: readonly DungeonMinisetPlacement[];
 }
 
 export type DungeonGenerationMetadata =
   | CathedralGenerationMetadata
   | CatacombsGenerationMetadata
   | CavesGenerationMetadata
-  | PreviewGenerationMetadata;
+  | HellGenerationMetadata;
 
 export interface DungeonLevel {
   dungeonType: DungeonType;
@@ -252,7 +307,7 @@ export interface DungeonLevel {
   doors: GridPoint[];
   stairs: {
     up: GridPoint;
-    down: GridPoint;
+    down?: GridPoint;
   };
   zones: DungeonZone[];
   generation: DungeonGenerationMetadata;

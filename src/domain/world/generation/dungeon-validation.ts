@@ -64,7 +64,7 @@ export function validateDungeon(
     issues.push({ rule: 'BaseGridContract', severity: 'error', message: 'Level dimensions do not match the 40x40 base grid contract.' });
   }
 
-  if (!reachable.has(pointKey(level.stairs.down))) {
+  if (level.stairs.down && !reachable.has(pointKey(level.stairs.down))) {
     issues.push({ rule: 'StartExitReachable', severity: 'error', message: 'Entrance cannot reach exit stair.', points: [level.stairs.up, level.stairs.down] });
   }
 
@@ -138,6 +138,38 @@ export function validateDungeon(
     }
   }
 
+  if (level.generation.familyId === 'Hell') {
+    const generation = level.generation;
+    if (generation.floorArea < generation.areaThreshold) {
+      issues.push({ rule: 'HellAreaThreshold', severity: 'error', message: 'Hell mirrored floor area is below the documented threshold.' });
+    }
+    if (generation.connectedFloorCount !== generation.floorArea) {
+      issues.push({ rule: 'HellConnectedFloor', severity: 'error', message: 'Hell mirrored floor mask must be a single connected component.' });
+    }
+    if (!hellPassabilityIsMirrored(level)) {
+      issues.push({ rule: 'HellQuadrantMirror', severity: 'error', message: 'Hell passability must be mirrored across the vertical and horizontal axes.' });
+    }
+    const minisetIds = new Set(generation.minisetPlacements.map((placement) => placement.id));
+    if (!minisetIds.has('L4USTAIRS')) {
+      issues.push({ rule: 'HellUpStairs', severity: 'error', message: 'Hell must include up stair miniset metadata.' });
+    }
+    if (level.levelNumber <= 14 && (!level.stairs.down || !minisetIds.has('L4DSTAIRS'))) {
+      issues.push({ rule: 'HellDownStairs', severity: 'error', message: 'Hell levels 13-14 must include down stair miniset metadata.' });
+    }
+    if (level.levelNumber >= 15 && (level.stairs.down || minisetIds.has('L4DSTAIRS'))) {
+      issues.push({ rule: 'HellTerminalDownStairs', severity: 'error', message: 'Hell levels 15-16 must not include down stair metadata.' });
+    }
+    if (level.levelNumber === 13 && !minisetIds.has('L4TWARP')) {
+      issues.push({ rule: 'HellTownWarp', severity: 'error', message: 'Hell level 13 must include town warp miniset metadata.' });
+    }
+    if (level.levelNumber === 15 && !minisetIds.has('L4PENTA2')) {
+      issues.push({ rule: 'HellGate', severity: 'error', message: 'Hell level 15 must include hell gate miniset metadata.' });
+    }
+    if (level.levelNumber === 16 && generation.protectedQuads.length !== 4) {
+      issues.push({ rule: 'HellProtectedQuads', severity: 'error', message: 'Hell level 16 must reserve four protected quad regions.' });
+    }
+  }
+
   if (!resourceBindings.ok) {
     issues.push({ rule: 'ResourceBindingComplete', severity: 'error', message: `Missing resource bindings: ${resourceBindings.missingSemantics.join(', ')}` });
   }
@@ -151,13 +183,28 @@ export function validateDungeon(
       roomCount: level.rooms.length,
       doorCount: level.doors.length,
       zoneCount: level.zones.length,
-      maskTileCount: level.generation.familyId === 'Cathedral' ? level.generation.maskTileCount : level.generation.familyId === 'Caves' ? level.generation.floorArea : undefined,
-      areaThreshold: level.generation.familyId === 'Cathedral' ? level.generation.areaThreshold : level.generation.familyId === 'Caves' ? level.generation.floorAreaThreshold : undefined,
-      minisetCount: level.generation.familyId === 'Cathedral' || level.generation.familyId === 'Catacombs' || level.generation.familyId === 'Caves'
+      maskTileCount: level.generation.familyId === 'Cathedral' ? level.generation.maskTileCount : level.generation.familyId === 'Caves' || level.generation.familyId === 'Hell' ? level.generation.floorArea : undefined,
+      areaThreshold: level.generation.familyId === 'Cathedral' ? level.generation.areaThreshold : level.generation.familyId === 'Caves' ? level.generation.floorAreaThreshold : level.generation.familyId === 'Hell' ? level.generation.areaThreshold : undefined,
+      minisetCount: level.generation.familyId === 'Cathedral' || level.generation.familyId === 'Catacombs' || level.generation.familyId === 'Caves' || level.generation.familyId === 'Hell'
         ? level.generation.minisetPlacements.length
         : undefined,
     },
   };
+}
+
+function hellPassabilityIsMirrored(level: DungeonLevel): boolean {
+  for (let y = 0; y < level.height; y += 1) {
+    for (let x = 0; x < level.width; x += 1) {
+      const passable = PASSABLE_TILES.has(level.tiles[y][x]);
+      const horizontal = PASSABLE_TILES.has(level.tiles[y][level.width - x - 1]);
+      const vertical = PASSABLE_TILES.has(level.tiles[level.height - y - 1][x]);
+      const diagonal = PASSABLE_TILES.has(level.tiles[level.height - y - 1][level.width - x - 1]);
+      if (passable !== horizontal || passable !== vertical || passable !== diagonal) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 export function catacombsRoomWithinClamp(room: GridRect, clampBounds: { min: number; max: number }): boolean {

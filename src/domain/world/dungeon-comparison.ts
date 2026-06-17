@@ -77,14 +77,24 @@ export function createDungeonComparisonSnapshot(result: DungeonGenerationResult)
     generation: {
       familyId: result.level.generation.familyId,
       generatorKind: result.level.generation.generatorKind,
-      areaThreshold: result.level.generation.familyId === 'Cathedral' ? result.level.generation.areaThreshold : undefined,
-      maskTileCount: result.level.generation.familyId === 'Cathedral' ? result.level.generation.maskTileCount : undefined,
+      areaThreshold: result.level.generation.familyId === 'Cathedral'
+        ? result.level.generation.areaThreshold
+        : result.level.generation.familyId === 'Hell'
+          ? result.level.generation.areaThreshold
+          : undefined,
+      maskTileCount: result.level.generation.familyId === 'Cathedral'
+        ? result.level.generation.maskTileCount
+        : result.level.generation.familyId === 'Hell'
+          ? result.level.generation.floorArea
+          : undefined,
       roomCount: result.level.generation.familyId === 'Catacombs'
         ? result.level.generation.rooms.length
         : result.level.generation.familyId === 'Caves'
           ? result.level.generation.themeRooms.length
+          : result.level.generation.familyId === 'Hell'
+            ? result.level.generation.themeRooms.length || result.level.generation.protectedQuads.length
         : undefined,
-      minisetCount: result.level.generation.familyId === 'Cathedral' || result.level.generation.familyId === 'Catacombs' || result.level.generation.familyId === 'Caves'
+      minisetCount: result.level.generation.familyId === 'Cathedral' || result.level.generation.familyId === 'Catacombs' || result.level.generation.familyId === 'Caves' || result.level.generation.familyId === 'Hell'
         ? result.level.generation.minisetPlacements.length
         : undefined,
       roomNodeCapacity: result.level.generation.familyId === 'Catacombs' ? result.level.generation.roomNodeCapacity : undefined,

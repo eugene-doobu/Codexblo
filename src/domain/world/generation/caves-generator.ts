@@ -10,14 +10,13 @@ import type {
   DungeonGenerationRequest,
   DungeonLevel,
   DungeonMinisetPlacement,
-  DungeonZone,
   TileKind,
 } from '../dungeon-types';
 import {
   addWalls,
   BASE_HEIGHT,
   BASE_WIDTH,
-  buildZones,
+  buildZonesWithFallback,
   chooseFootprintPosition,
   createGrid,
   FORCED_PLACEMENT_TRIES,
@@ -128,7 +127,7 @@ export function generateCavesLevel(request: DungeonGenerationRequest, seed: numb
       rooms: assembly.themeRooms,
       doors: [],
       stairs: { up: assembly.up, down: assembly.down },
-      zones: buildCaveZones(request, assembly.themeRooms, assembly.layout.tiles),
+      zones: buildZonesWithFallback(request, assembly.themeRooms, assembly.layout.tiles),
       generation,
     };
   }
@@ -598,48 +597,6 @@ function resolveCavesFixtureProfile(request: DungeonGenerationRequest): CavesFix
     default:
       return STANDARD_CAVES_FIXTURE;
   }
-}
-
-function buildCaveZones(request: DungeonGenerationRequest, rooms: readonly GridRect[], tiles: TileKind[][]): DungeonZone[] {
-  const zones = buildZones(request, rooms, tiles);
-  const candidates = findCaveZoneCandidates(tiles);
-  const usedRects = new Set(zones.map((zone) => rectKey(zone.rect)));
-  const specs = [
-    { enabled: request.includeObjects, kind: 'object' as const, id: 'object-zone-01' },
-    { enabled: request.includeSpawnZones, kind: 'spawn' as const, id: 'spawn-zone-01' },
-    { enabled: request.includeQuestLocks, kind: 'questLock' as const, id: 'quest-lock-01' },
-  ];
-
-  for (const spec of specs) {
-    if (!spec.enabled || zones.some((zone) => zone.kind === spec.kind)) {
-      continue;
-    }
-    const rect = candidates.find((candidate) => !usedRects.has(rectKey(candidate)));
-    if (!rect) {
-      continue;
-    }
-    usedRects.add(rectKey(rect));
-    zones.push({ id: spec.id, kind: spec.kind, rect });
-  }
-
-  return zones;
-}
-
-function findCaveZoneCandidates(tiles: TileKind[][]): GridRect[] {
-  const candidates: GridRect[] = [];
-  for (let y = 1; y < BASE_HEIGHT - 2; y += 1) {
-    for (let x = 1; x < BASE_WIDTH - 2; x += 1) {
-      const candidate = rect(x, y, 2, 2);
-      if (rectContainsOnlyPassable(tiles, candidate)) {
-        candidates.push(candidate);
-      }
-    }
-  }
-  return candidates;
-}
-
-function rectKey(area: GridRect): string {
-  return `${area.x},${area.y},${area.width},${area.height}`;
 }
 
 function countMaskFloor(mask: CaveMask): number {

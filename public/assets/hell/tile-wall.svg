@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="72" height="48" viewBox="0 0 72 48" role="img" aria-label="Hell wall block">
+    <title>Hell wall block</title>
+    <rect width="72" height="48" fill="none"/>
+    
+      <path data-layer="wall-footprint" d="M 36 6 L 70 24 L 36 42 L 2 24 Z" fill="#5b211b" stroke="#b35a37" stroke-width="2"/>
+      <path data-layer="wall-left-face" d="M 2 24 L 12 16 L 36 28 L 36 42 Z" fill="#2a1112" stroke="#b35a37" stroke-width="2" opacity="0.92"/>
+      <path data-layer="wall-right-face" d="M 60 16 L 70 24 L 36 42 L 36 28 Z" fill="#2a1112" stroke="#b35a37" stroke-width="2"/>
+      <path data-layer="wall-top" d="M 36 4 L 60 16 L 36 28 L 12 16 Z" fill="#5b211b" stroke="#b35a37" stroke-width="2"/>
+      <path data-layer="wall-center-ridge" d="M 36 4 V 42" stroke="#b35a37" stroke-width="1" opacity="0.65"/>
+  </svg>

@@ -167,6 +167,62 @@ export const CAVES_ASSET_REGISTRY = [
     "height": 48
   }
 ] as const satisfies readonly AssetManifestEntry[];
+
+export const HELL_RESOURCE_PACK_ID = "hell-lab-placeholder";
+export const HELL_TILE_SIZE = {
+  "width": 72,
+  "height": 48
+} as const;
+export const HELL_ASSET_REGISTRY = [
+  {
+    "key": "hell.floor",
+    "kind": "image",
+    "semantic": "tile.floor",
+    "path": "/assets/hell/tile-floor.svg",
+    "width": 72,
+    "height": 48
+  },
+  {
+    "key": "hell.wall",
+    "kind": "image",
+    "semantic": "tile.wall",
+    "path": "/assets/hell/tile-wall.svg",
+    "width": 72,
+    "height": 48
+  },
+  {
+    "key": "hell.door",
+    "kind": "image",
+    "semantic": "tile.door",
+    "path": "/assets/hell/tile-door.svg",
+    "width": 72,
+    "height": 48
+  },
+  {
+    "key": "hell.stairUp",
+    "kind": "image",
+    "semantic": "tile.stairUp",
+    "path": "/assets/hell/tile-stair-up.svg",
+    "width": 72,
+    "height": 48
+  },
+  {
+    "key": "hell.stairDown",
+    "kind": "image",
+    "semantic": "tile.stairDown",
+    "path": "/assets/hell/tile-stair-down.svg",
+    "width": 72,
+    "height": 48
+  },
+  {
+    "key": "hell.void",
+    "kind": "image",
+    "semantic": "tile.void",
+    "path": "/assets/hell/tile-void.svg",
+    "width": 72,
+    "height": 48
+  }
+] as const satisfies readonly AssetManifestEntry[];
 export const DUNGEON_ASSET_REGISTRY = [
   {
     "key": "cathedral.floor",
@@ -309,6 +365,54 @@ export const DUNGEON_ASSET_REGISTRY = [
     "kind": "image",
     "semantic": "tile.void",
     "path": "/assets/caves/tile-void.svg",
+    "width": 72,
+    "height": 48
+  },
+  {
+    "key": "hell.floor",
+    "kind": "image",
+    "semantic": "tile.floor",
+    "path": "/assets/hell/tile-floor.svg",
+    "width": 72,
+    "height": 48
+  },
+  {
+    "key": "hell.wall",
+    "kind": "image",
+    "semantic": "tile.wall",
+    "path": "/assets/hell/tile-wall.svg",
+    "width": 72,
+    "height": 48
+  },
+  {
+    "key": "hell.door",
+    "kind": "image",
+    "semantic": "tile.door",
+    "path": "/assets/hell/tile-door.svg",
+    "width": 72,
+    "height": 48
+  },
+  {
+    "key": "hell.stairUp",
+    "kind": "image",
+    "semantic": "tile.stairUp",
+    "path": "/assets/hell/tile-stair-up.svg",
+    "width": 72,
+    "height": 48
+  },
+  {
+    "key": "hell.stairDown",
+    "kind": "image",
+    "semantic": "tile.stairDown",
+    "path": "/assets/hell/tile-stair-down.svg",
+    "width": 72,
+    "height": 48
+  },
+  {
+    "key": "hell.void",
+    "kind": "image",
+    "semantic": "tile.void",
+    "path": "/assets/hell/tile-void.svg",
     "width": 72,
     "height": 48
   }

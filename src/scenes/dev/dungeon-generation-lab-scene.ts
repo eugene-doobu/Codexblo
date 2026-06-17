@@ -230,7 +230,7 @@ function createControls(onGenerate: (request: DungeonGenerationRequest, options:
           <option value="Cathedral">Cathedral</option>
           <option value="Catacombs">Catacombs</option>
           <option value="Caves">Caves</option>
-          <option value="Hell">Hell preview</option>
+          <option value="Hell">Hell</option>
         </select>
       </div>
       <div class="lab-row">

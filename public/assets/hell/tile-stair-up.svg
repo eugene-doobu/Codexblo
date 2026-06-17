@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="72" height="48" viewBox="0 0 72 48" role="img" aria-label="Hell stair up tile">
+    <title>Hell stair up tile</title>
+    <rect width="72" height="48" fill="none"/>
+    
+      <path data-layer="stair-up-fill" d="M 36 8 L 64 24 L 36 40 L 8 24 Z" fill="#4a201a" stroke="#f1b45b" stroke-width="2"/>
+      <path data-layer="stair-up-treads" d="M 16 28 L 36 18 L 56 28 M 20 32 L 36 24 L 52 32 M 24 36 L 36 30 L 48 36" fill="none" stroke="#f1b45b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path data-layer="stair-up-arrow" d="M 36 10 L 48 24 L 24 24 Z" fill="#240b08" opacity="0.78"/>
+  </svg>

@@ -4,6 +4,8 @@ import {
   DUNGEON_GENERATOR_VERSION,
   createGenerationRequest,
   generateDungeon,
+  isPassable,
+  type DungeonGenerationResult,
   type DungeonType,
 } from '../src/domain/world/dungeon-generator';
 import { compareDungeonSnapshots, createDungeonComparisonSnapshot } from '../src/domain/world/dungeon-comparison';
@@ -12,6 +14,7 @@ import { rectsOverlap, type GridRect } from '../src/core/grid';
 const cathedralV2Checksum = '44a45a64';
 const catacombsBspChecksum = '919ab6df';
 const cavesCellularChecksum = 'fb139935';
+const hellQuadrantMirrorChecksum = '70d5d85a';
 
 const baseRequest = createGenerationRequest({
   dungeonType: 'Cathedral',
@@ -30,6 +33,12 @@ const cavesRequest = createGenerationRequest({
   levelNumber: 9,
   seedMode: 'manual',
   seedText: 'caves-test-seed',
+});
+const hellRequest = createGenerationRequest({
+  dungeonType: 'Hell',
+  levelNumber: 13,
+  seedMode: 'manual',
+  seedText: 'hell-test-seed',
 });
 
 describe('Cathedral dungeon generation', () => {
@@ -431,3 +440,161 @@ describe('Caves dungeon generation', () => {
     }).identical).toBe(true);
   });
 });
+
+describe('Hell dungeon generation', () => {
+  it('is deterministic and pins the Hell quadrant-mirror fixture checksum', () => {
+    const first = generateDungeon(hellRequest);
+    const second = generateDungeon(hellRequest);
+
+    expect(first.seed).toBe(second.seed);
+    expect(first.level.checksum).toBe(hellQuadrantMirrorChecksum);
+    expect(second.level.checksum).toBe(hellQuadrantMirrorChecksum);
+    expect(first.level.tiles).toEqual(second.level.tiles);
+  });
+
+  it('uses the documented Hell grid, mirror, theme, transition, and miniset contracts', () => {
+    const result = generateDungeon(hellRequest);
+    const generation = result.level.generation;
+
+    expect(result.request.resourcePackId).toBe(DUNGEON_RESOURCE_PACK_IDS.Hell);
+    expect(result.validation.ok).toBe(true);
+    expect(result.level.width).toBe(40);
+    expect(result.level.height).toBe(40);
+    expect(result.level.gridContract.expandedGrid).toEqual({ width: 112, height: 112, padding: 16, scale: 2 });
+    expect(generation.familyId).toBe('Hell');
+    if (generation.familyId !== 'Hell') {
+      throw new Error('Expected Hell metadata.');
+    }
+
+    expect(generation.generatorKind).toBe('quadrant-mirror');
+    expect(generation.levelRange).toEqual({ min: 13, max: 16 });
+    expect(generation.workingQuadrant).toEqual({ width: 20, height: 20 });
+    expect(generation.mirrorAxes).toEqual({ vertical: 19.5, horizontal: 19.5 });
+    expect(generation.floorArea).toBeGreaterThanOrEqual(generation.areaThreshold);
+    expect(generation.connectedFloorCount).toBe(generation.floorArea);
+    expect(generation.sideRoomAttemptsPerSide).toBe(20);
+    expect(generation.sideRoomSizes).toEqual([2, 4, 6]);
+    expect(generation.themeRoom).toEqual({ minSize: 7, maxSize: 10, floorTile: 6, frequency: 8, randomizeSize: true, enabled: true });
+    expect(generation.townWarp).toEqual(expect.objectContaining({ enabled: true, levelNumber: 13 }));
+    expect(generation.minisetPlacements).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'L4USTAIRS', role: 'stair', size: { width: 4, height: 5 }, tries: 1600 }),
+        expect.objectContaining({ id: 'L4DSTAIRS', role: 'stair', size: { width: 5, height: 5 }, tries: 1600 }),
+        expect.objectContaining({ id: 'L4TWARP', role: 'portal', size: { width: 4, height: 5 }, tries: 1600 }),
+      ]),
+    );
+    expectHellPassabilityMirror(result);
+  });
+
+  it('keeps Hell floors, stairs, zones, and all passable tiles connected', () => {
+    const result = generateDungeon(hellRequest);
+
+    expect(result.validation.ok).toBe(true);
+    expect(result.resourceBindings.ok).toBe(true);
+    expect(result.graph.unreachablePassableTiles).toHaveLength(0);
+    expect(result.validation.metrics.reachableTileCount).toBe(result.validation.metrics.passableTileCount);
+    expect(result.validation.metrics.zoneCount).toBe(3);
+  });
+
+  it('continues to a later Hell attempt when an early transition footprint is too crowded', () => {
+    const result = generateDungeon(createGenerationRequest({ dungeonType: 'Hell', levelNumber: 14, seedText: 'hell-smoke-14-24' }));
+    const generation = result.level.generation;
+
+    expect(result.validation.ok).toBe(true);
+    expect(result.level.checksum).toBe('ccfa576c');
+    expect(generation.familyId).toBe('Hell');
+    if (generation.familyId !== 'Hell') {
+      throw new Error('Expected Hell metadata.');
+    }
+    expect(generation.attemptCount).toBeGreaterThan(1);
+    expect(generation.minisetPlacements.map((placement) => placement.id)).toEqual(['L4USTAIRS', 'L4DSTAIRS']);
+  });
+
+  it('supports the level-15 Hell gate fixture without down stairs', () => {
+    const result = generateDungeon(createGenerationRequest({
+      dungeonType: 'Hell',
+      levelNumber: 15,
+      seedMode: 'fixture',
+      seedText: 'hell-l15-gate',
+    }));
+    const generation = result.level.generation;
+
+    expect(result.validation.ok).toBe(true);
+    expect(result.level.checksum).toBe('f9b4778d');
+    expect(result.level.stairs.down).toBeUndefined();
+    expect(generation.familyId).toBe('Hell');
+    if (generation.familyId !== 'Hell') {
+      throw new Error('Expected Hell metadata.');
+    }
+    expect(generation.hellGate).toEqual(expect.objectContaining({ enabled: true, levelNumber: 15 }));
+    expect(generation.minisetPlacements.map((placement) => placement.id)).toEqual(['L4USTAIRS', 'L4PENTA', 'L4PENTA2']);
+  });
+
+  it('supports the level-16 protected quad fixture without theme rooms', () => {
+    const result = generateDungeon(createGenerationRequest({
+      dungeonType: 'Hell',
+      levelNumber: 16,
+      seedMode: 'fixture',
+      seedText: 'hell-l16-quads',
+    }));
+    const generation = result.level.generation;
+
+    expect(result.validation.ok).toBe(true);
+    expect(result.level.checksum).toBe('b13f4bf9');
+    expect(result.level.stairs.down).toBeUndefined();
+    expect(generation.familyId).toBe('Hell');
+    if (generation.familyId !== 'Hell') {
+      throw new Error('Expected Hell metadata.');
+    }
+    expect(generation.themeRoom.enabled).toBe(false);
+    expect(generation.themeRooms).toEqual([]);
+    expect(generation.protectedQuads).toEqual([
+      { x: 2, y: 2, width: 14, height: 14 },
+      { x: 24, y: 2, width: 14, height: 14 },
+      { x: 2, y: 24, width: 14, height: 14 },
+      { x: 24, y: 24, width: 14, height: 14 },
+    ]);
+  });
+
+  it('accepts numeric manual seeds directly for Hell snapshot comparison', () => {
+    const result = generateDungeon(createGenerationRequest({ dungeonType: 'Hell', levelNumber: 13, seedText: '123456789' }));
+
+    expect(result.seed).toBe(123456789);
+    expect(result.level.checksum).toBe('c22e2c26');
+    expect(result.validation.ok).toBe(true);
+  });
+
+  it('creates comparable Hell grid snapshots with generation metadata', () => {
+    const result = generateDungeon(hellRequest);
+    const generation = result.level.generation;
+    if (generation.familyId !== 'Hell') {
+      throw new Error('Expected Hell metadata.');
+    }
+
+    const snapshot = createDungeonComparisonSnapshot(result);
+    expect(snapshot.generation).toEqual(expect.objectContaining({
+      familyId: 'Hell',
+      generatorKind: 'quadrant-mirror',
+      roomCount: generation.themeRooms.length,
+      minisetCount: generation.minisetPlacements.length,
+    }));
+    expect(compareDungeonSnapshots(snapshot, {
+      width: snapshot.grid.width,
+      height: snapshot.grid.height,
+      rows: snapshot.tileRows,
+      checksum: snapshot.checksum,
+    }).identical).toBe(true);
+  });
+});
+
+function expectHellPassabilityMirror(result: DungeonGenerationResult): void {
+  const { width, height, tiles } = result.level;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const passable = isPassable(tiles[y][x]);
+      expect(isPassable(tiles[y][width - x - 1])).toBe(passable);
+      expect(isPassable(tiles[height - y - 1][x])).toBe(passable);
+      expect(isPassable(tiles[height - y - 1][width - x - 1])).toBe(passable);
+    }
+  }
+}

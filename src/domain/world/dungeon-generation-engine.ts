@@ -4,7 +4,7 @@ import { resolveDungeonSeed } from './dungeon-generation-request';
 import { generateCatacombsLevel } from './generation/catacombs-generator';
 import { generateCathedralLevel } from './generation/cathedral-generator';
 import { generateCavesLevel } from './generation/caves-generator';
-import { generatePreviewLevel } from './generation/preview-generator';
+import { generateHellLevel } from './generation/hell-generator';
 import { buildConnectivityGraph, isPassable, validateDungeon, validateResourceBindings } from './generation/dungeon-validation';
 
 export { isPassable };
@@ -33,6 +33,6 @@ function generateLevelByType(request: DungeonGenerationRequest, seed: number): O
     case 'Caves':
       return generateCavesLevel(request, seed);
     case 'Hell':
-      return generatePreviewLevel(request, seed);
+      return generateHellLevel(request, seed);
   }
 }

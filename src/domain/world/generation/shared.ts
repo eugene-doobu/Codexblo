@@ -1,7 +1,7 @@
 import { pointKey } from '../../../core/grid';
 import type { GridPoint, GridRect } from '../../../core/grid';
 import { GameRng } from '../../../core/rng';
-import type { DungeonGenerationRequest, DungeonGridContract, DungeonMinisetId, DungeonMinisetPlacement, TileKind } from '../dungeon-types';
+import type { DungeonGenerationRequest, DungeonGridContract, DungeonMinisetId, DungeonMinisetPlacement, DungeonZone, TileKind } from '../dungeon-types';
 
 export const BASE_WIDTH = 40;
 export const BASE_HEIGHT = 40;
@@ -33,7 +33,7 @@ export function placeStairMiniset(
   rng: GameRng,
   tiles: TileKind[][],
   protectedFootprints: Set<string>,
-  id: Extract<DungeonMinisetId, 'STAIRSUP' | 'STAIRSDOWN' | 'USTAIRS' | 'DSTAIRS' | 'L3UP' | 'L3DOWN'>,
+  id: Extract<DungeonMinisetId, 'STAIRSUP' | 'STAIRSDOWN' | 'USTAIRS' | 'DSTAIRS' | 'L3UP' | 'L3DOWN' | 'L4USTAIRS' | 'L4DSTAIRS'>,
   size: { width: number; height: number },
 ): StairPlacementResult {
   const position = chooseFootprintPosition(rng, tiles, protectedFootprints, size, FORCED_PLACEMENT_TRIES);
@@ -42,7 +42,7 @@ export function placeStairMiniset(
     x: position.x + Math.floor(size.width / 2),
     y: position.y + Math.floor(size.height / 2),
   };
-  tiles[point.y][point.x] = id === 'STAIRSUP' || id === 'USTAIRS' || id === 'L3UP' ? 'stairUp' : 'stairDown';
+  tiles[point.y][point.x] = id === 'STAIRSUP' || id === 'USTAIRS' || id === 'L3UP' || id === 'L4USTAIRS' ? 'stairUp' : 'stairDown';
   return {
     point,
     miniset: { id, role: 'stair', position, size, tries: FORCED_PLACEMENT_TRIES },
@@ -196,8 +196,8 @@ export function addWalls(tiles: TileKind[][]): void {
   }
 }
 
-export function buildZones(request: DungeonGenerationRequest, rooms: readonly GridRect[], tiles: TileKind[][]) {
-  const zones = [];
+export function buildZones(request: DungeonGenerationRequest, rooms: readonly GridRect[], tiles: TileKind[][]): DungeonZone[] {
+  const zones: DungeonZone[] = [];
   const candidates = rooms.flatMap((room) => findZoneRects(room, tiles));
   if (request.includeObjects && candidates[0]) {
     zones.push({ id: 'object-zone-01', kind: 'object' as const, rect: candidates[0] });
@@ -208,6 +208,31 @@ export function buildZones(request: DungeonGenerationRequest, rooms: readonly Gr
   if (request.includeQuestLocks && candidates[2]) {
     zones.push({ id: 'quest-lock-01', kind: 'questLock' as const, rect: candidates[2] });
   }
+  return zones;
+}
+
+export function buildZonesWithFallback(request: DungeonGenerationRequest, rooms: readonly GridRect[], tiles: TileKind[][]): DungeonZone[] {
+  const zones = buildZones(request, rooms, tiles);
+  const candidates = findFallbackZoneRects(tiles);
+  const usedRects = new Set(zones.map((zone) => rectKey(zone.rect)));
+  const specs = [
+    { enabled: request.includeObjects, kind: 'object' as const, id: 'object-zone-01' },
+    { enabled: request.includeSpawnZones, kind: 'spawn' as const, id: 'spawn-zone-01' },
+    { enabled: request.includeQuestLocks, kind: 'questLock' as const, id: 'quest-lock-01' },
+  ];
+
+  for (const spec of specs) {
+    if (!spec.enabled || zones.some((zone) => zone.kind === spec.kind)) {
+      continue;
+    }
+    const fallbackRect = candidates.find((candidate) => !usedRects.has(rectKey(candidate)));
+    if (!fallbackRect) {
+      continue;
+    }
+    usedRects.add(rectKey(fallbackRect));
+    zones.push({ id: spec.id, kind: spec.kind, rect: fallbackRect });
+  }
+
   return zones;
 }
 
@@ -223,6 +248,23 @@ export function findZoneRects(room: GridRect, tiles: TileKind[][]): GridRect[] {
     }
   }
   return zones.slice(0, 1);
+}
+
+function findFallbackZoneRects(tiles: TileKind[][]): GridRect[] {
+  const candidates: GridRect[] = [];
+  for (let y = 1; y < BASE_HEIGHT - 2; y += 1) {
+    for (let x = 1; x < BASE_WIDTH - 2; x += 1) {
+      const candidate = rect(x, y, 2, 2);
+      if (rectContainsOnlyPassable(tiles, candidate)) {
+        candidates.push(candidate);
+      }
+    }
+  }
+  return candidates;
+}
+
+function rectKey(area: GridRect): string {
+  return `${area.x},${area.y},${area.width},${area.height}`;
 }
 
 export function countPassableNeighbors(tiles: TileKind[][], point: GridPoint): number {

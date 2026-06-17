@@ -98,6 +98,35 @@ describe('Dungeon generated resources', () => {
     }
   });
 
+  it('includes a separate Hell resource pack and runtime asset mapping', () => {
+    const publicRoot = resolve(process.cwd(), 'public');
+    const manifestPath = join(publicRoot, 'assets/asset-manifest.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+      resourcePacks: { resourcePackId: string; dungeonTypes: string[]; assets: AssetManifestEntry[] }[];
+    };
+    const pack = manifest.resourcePacks.find((resourcePack) => resourcePack.resourcePackId === 'hell-lab-placeholder');
+
+    expect(pack).toBeDefined();
+    expect(pack!.dungeonTypes).toEqual(['Hell']);
+    expect(pack!.assets).toHaveLength(REQUIRED_TILE_SEMANTICS.length);
+    expect(resourcePackIdForDungeonType('Hell')).toBe('hell-lab-placeholder');
+    expect(tileAssetKeysForResourcePack('hell-lab-placeholder').floor).toBe('hell.floor');
+    expect(tileAssetPathsForResourcePack('hell-lab-placeholder').floor).toBe('/assets/hell/tile-floor.svg');
+    expect(TILE_ASSET_KEYS_BY_DUNGEON.Hell.floor).toBe('hell.floor');
+    expect(TILE_ASSET_KEYS_BY_DUNGEON.Hell.floor).not.toBe(TILE_ASSET_KEYS_BY_DUNGEON.Caves.floor);
+    expect(TILE_ASSET_KEYS_BY_DUNGEON.Hell.floor).not.toBe(TILE_ASSET_KEYS_BY_DUNGEON.Catacombs.floor);
+    expect(TILE_ASSET_KEYS_BY_DUNGEON.Hell.floor).not.toBe(TILE_ASSET_KEYS_BY_DUNGEON.Cathedral.floor);
+
+    for (const semantic of REQUIRED_TILE_SEMANTICS) {
+      const tileKind = semantic.replace('tile.', '') as TileKind;
+      const path = TILE_ASSET_PATHS_BY_DUNGEON.Hell[tileKind];
+      const assetPath = resolve(publicRoot, path.replace(/^\//, ''));
+
+      expect(path.startsWith('/assets/hell/')).toBe(true);
+      expect(existsSync(assetPath)).toBe(true);
+    }
+  });
+
   it('renders wall art as a raised block above the floor footprint', () => {
     const publicRoot = resolve(process.cwd(), 'public');
     const wallPath = resolve(publicRoot, TILE_ASSET_PATHS.wall.replace(/^\//, ''));

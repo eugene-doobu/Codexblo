@@ -23,7 +23,7 @@ export type {
   DungeonValidationIssue,
   DungeonValidationReport,
   DungeonZone,
-  PreviewGenerationMetadata,
+  HellGenerationMetadata,
   SeedMode,
   TileKind,
 } from './dungeon-types';

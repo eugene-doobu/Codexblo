@@ -4,8 +4,7 @@
     {
       "resourcePackId": "cathedral-lab-placeholder",
       "dungeonTypes": [
-        "Cathedral",
-        "Hell"
+        "Cathedral"
       ],
       "tileSize": {
         "width": 72,
@@ -181,6 +180,66 @@
           "height": 48
         }
       ]
+    },
+    {
+      "resourcePackId": "hell-lab-placeholder",
+      "dungeonTypes": [
+        "Hell"
+      ],
+      "tileSize": {
+        "width": 72,
+        "height": 48
+      },
+      "assets": [
+        {
+          "key": "hell.floor",
+          "kind": "image",
+          "semantic": "tile.floor",
+          "path": "/assets/hell/tile-floor.svg",
+          "width": 72,
+          "height": 48
+        },
+        {
+          "key": "hell.wall",
+          "kind": "image",
+          "semantic": "tile.wall",
+          "path": "/assets/hell/tile-wall.svg",
+          "width": 72,
+          "height": 48
+        },
+        {
+          "key": "hell.door",
+          "kind": "image",
+          "semantic": "tile.door",
+          "path": "/assets/hell/tile-door.svg",
+          "width": 72,
+          "height": 48
+        },
+        {
+          "key": "hell.stairUp",
+          "kind": "image",
+          "semantic": "tile.stairUp",
+          "path": "/assets/hell/tile-stair-up.svg",
+          "width": 72,
+          "height": 48
+        },
+        {
+          "key": "hell.stairDown",
+          "kind": "image",
+          "semantic": "tile.stairDown",
+          "path": "/assets/hell/tile-stair-down.svg",
+          "width": 72,
+          "height": 48
+        },
+        {
+          "key": "hell.void",
+          "kind": "image",
+          "semantic": "tile.void",
+          "path": "/assets/hell/tile-void.svg",
+          "width": 72,
+          "height": 48
+        }
+      ]
     }
   ],
   "assets": [
@@ -325,6 +384,54 @@
       "kind": "image",
       "semantic": "tile.void",
       "path": "/assets/caves/tile-void.svg",
+      "width": 72,
+      "height": 48
+    },
+    {
+      "key": "hell.floor",
+      "kind": "image",
+      "semantic": "tile.floor",
+      "path": "/assets/hell/tile-floor.svg",
+      "width": 72,
+      "height": 48
+    },
+    {
+      "key": "hell.wall",
+      "kind": "image",
+      "semantic": "tile.wall",
+      "path": "/assets/hell/tile-wall.svg",
+      "width": 72,
+      "height": 48
+    },
+    {
+      "key": "hell.door",
+      "kind": "image",
+      "semantic": "tile.door",
+      "path": "/assets/hell/tile-door.svg",
+      "width": 72,
+      "height": 48
+    },
+    {
+      "key": "hell.stairUp",
+      "kind": "image",
+      "semantic": "tile.stairUp",
+      "path": "/assets/hell/tile-stair-up.svg",
+      "width": 72,
+      "height": 48
+    },
+    {
+      "key": "hell.stairDown",
+      "kind": "image",
+      "semantic": "tile.stairDown",
+      "path": "/assets/hell/tile-stair-down.svg",
+      "width": 72,
+      "height": 48
+    },
+    {
+      "key": "hell.void",
+      "kind": "image",
+      "semantic": "tile.void",
+      "path": "/assets/hell/tile-void.svg",
       "width": 72,
       "height": 48
     }
