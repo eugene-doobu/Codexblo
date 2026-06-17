@@ -17,7 +17,8 @@ import {
 
 export function generatePreviewLevel(request: DungeonGenerationRequest, seed: number): Omit<DungeonLevel, 'checksum'> {
   const rng = new GameRng(seed);
-  const profile = previewProfileFor(request.dungeonType);
+  const familyId = previewFamilyIdFor(request.dungeonType);
+  const profile = previewProfileFor(familyId);
   const tiles = createGrid(BASE_WIDTH, BASE_HEIGHT, 'void');
   const rooms = placePreviewRooms(rng, profile.roomCount);
   const doors: GridPoint[] = [];
@@ -36,7 +37,7 @@ export function generatePreviewLevel(request: DungeonGenerationRequest, seed: nu
   addWalls(tiles);
 
   const generation: PreviewGenerationMetadata = {
-    familyId: request.dungeonType as Exclude<DungeonType, 'Cathedral' | 'Catacombs'>,
+    familyId,
     generatorKind: 'preview-rooms',
     attemptCount: 1,
   };
@@ -57,16 +58,17 @@ export function generatePreviewLevel(request: DungeonGenerationRequest, seed: nu
   };
 }
 
-export function previewProfileFor(dungeonType: DungeonType): { roomCount: number } {
+function previewFamilyIdFor(dungeonType: DungeonType): PreviewGenerationMetadata['familyId'] {
+  if (dungeonType === 'Hell') {
+    return dungeonType;
+  }
+  throw new Error(`${dungeonType} is not a preview dungeon family.`);
+}
+
+export function previewProfileFor(dungeonType: PreviewGenerationMetadata['familyId']): { roomCount: number } {
   switch (dungeonType) {
-    case 'Catacombs':
-      return { roomCount: 10 };
-    case 'Caves':
-      return { roomCount: 9 };
     case 'Hell':
       return { roomCount: 8 };
-    case 'Cathedral':
-      return { roomCount: 9 };
   }
 }
 

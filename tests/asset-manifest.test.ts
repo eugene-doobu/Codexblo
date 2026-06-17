@@ -70,6 +70,34 @@ describe('Dungeon generated resources', () => {
     }
   });
 
+  it('includes a separate Caves resource pack and runtime asset mapping', () => {
+    const publicRoot = resolve(process.cwd(), 'public');
+    const manifestPath = join(publicRoot, 'assets/asset-manifest.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+      resourcePacks: { resourcePackId: string; dungeonTypes: string[]; assets: AssetManifestEntry[] }[];
+    };
+    const pack = manifest.resourcePacks.find((resourcePack) => resourcePack.resourcePackId === 'caves-lab-placeholder');
+
+    expect(pack).toBeDefined();
+    expect(pack!.dungeonTypes).toEqual(['Caves']);
+    expect(pack!.assets).toHaveLength(REQUIRED_TILE_SEMANTICS.length);
+    expect(resourcePackIdForDungeonType('Caves')).toBe('caves-lab-placeholder');
+    expect(tileAssetKeysForResourcePack('caves-lab-placeholder').floor).toBe('caves.floor');
+    expect(tileAssetPathsForResourcePack('caves-lab-placeholder').floor).toBe('/assets/caves/tile-floor.svg');
+    expect(TILE_ASSET_KEYS_BY_DUNGEON.Caves.floor).toBe('caves.floor');
+    expect(TILE_ASSET_KEYS_BY_DUNGEON.Caves.floor).not.toBe(TILE_ASSET_KEYS_BY_DUNGEON.Catacombs.floor);
+    expect(TILE_ASSET_KEYS_BY_DUNGEON.Caves.floor).not.toBe(TILE_ASSET_KEYS_BY_DUNGEON.Cathedral.floor);
+
+    for (const semantic of REQUIRED_TILE_SEMANTICS) {
+      const tileKind = semantic.replace('tile.', '') as TileKind;
+      const path = TILE_ASSET_PATHS_BY_DUNGEON.Caves[tileKind];
+      const assetPath = resolve(publicRoot, path.replace(/^\//, ''));
+
+      expect(path.startsWith('/assets/caves/')).toBe(true);
+      expect(existsSync(assetPath)).toBe(true);
+    }
+  });
+
   it('renders wall art as a raised block above the floor footprint', () => {
     const publicRoot = resolve(process.cwd(), 'public');
     const wallPath = resolve(publicRoot, TILE_ASSET_PATHS.wall.replace(/^\//, ''));

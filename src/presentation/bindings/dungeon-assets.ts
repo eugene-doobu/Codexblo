@@ -5,6 +5,8 @@ import {
   CATACOMBS_RESOURCE_PACK_ID,
   CATHEDRAL_ASSET_REGISTRY,
   CATHEDRAL_RESOURCE_PACK_ID,
+  CAVES_ASSET_REGISTRY,
+  CAVES_RESOURCE_PACK_ID,
   DUNGEON_ASSET_REGISTRY,
 } from './dungeon-asset-registry.generated';
 
@@ -36,18 +38,20 @@ export const TILE_ASSET_ENTRIES = DUNGEON_ASSET_REGISTRY;
 export const RESOURCE_PACK_ID_BY_DUNGEON = {
   Cathedral: CATHEDRAL_RESOURCE_PACK_ID,
   Catacombs: CATACOMBS_RESOURCE_PACK_ID,
-  Caves: CATHEDRAL_RESOURCE_PACK_ID,
+  Caves: CAVES_RESOURCE_PACK_ID,
   Hell: CATHEDRAL_RESOURCE_PACK_ID,
 } satisfies Record<DungeonType, string>;
 
 export const TILE_ASSET_KEYS_BY_RESOURCE_PACK = {
   [CATHEDRAL_RESOURCE_PACK_ID]: mapTileAssets(CATHEDRAL_ASSET_REGISTRY, (entry) => entry.key),
   [CATACOMBS_RESOURCE_PACK_ID]: mapTileAssets(CATACOMBS_ASSET_REGISTRY, (entry) => entry.key),
+  [CAVES_RESOURCE_PACK_ID]: mapTileAssets(CAVES_ASSET_REGISTRY, (entry) => entry.key),
 } satisfies Record<string, Record<TileKind, string>>;
 
 export const TILE_ASSET_PATHS_BY_RESOURCE_PACK = {
   [CATHEDRAL_RESOURCE_PACK_ID]: mapTileAssets(CATHEDRAL_ASSET_REGISTRY, (entry) => entry.path),
   [CATACOMBS_RESOURCE_PACK_ID]: mapTileAssets(CATACOMBS_ASSET_REGISTRY, (entry) => entry.path),
+  [CAVES_RESOURCE_PACK_ID]: mapTileAssets(CAVES_ASSET_REGISTRY, (entry) => entry.path),
 } satisfies Record<string, Record<TileKind, string>>;
 
 export const TILE_ASSET_KEYS_BY_DUNGEON = {

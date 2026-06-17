@@ -1,7 +1,7 @@
 import { pointKey } from '../../../core/grid';
 import type { GridPoint, GridRect } from '../../../core/grid';
 import { GameRng } from '../../../core/rng';
-import type { DungeonGenerationRequest, DungeonGridContract, DungeonMinisetPlacement, TileKind } from '../dungeon-types';
+import type { DungeonGenerationRequest, DungeonGridContract, DungeonMinisetId, DungeonMinisetPlacement, TileKind } from '../dungeon-types';
 
 export const BASE_WIDTH = 40;
 export const BASE_HEIGHT = 40;
@@ -33,7 +33,7 @@ export function placeStairMiniset(
   rng: GameRng,
   tiles: TileKind[][],
   protectedFootprints: Set<string>,
-  id: 'STAIRSUP' | 'STAIRSDOWN' | 'USTAIRS' | 'DSTAIRS',
+  id: Extract<DungeonMinisetId, 'STAIRSUP' | 'STAIRSDOWN' | 'USTAIRS' | 'DSTAIRS' | 'L3UP' | 'L3DOWN'>,
   size: { width: number; height: number },
 ): StairPlacementResult {
   const position = chooseFootprintPosition(rng, tiles, protectedFootprints, size, FORCED_PLACEMENT_TRIES);
@@ -42,7 +42,7 @@ export function placeStairMiniset(
     x: position.x + Math.floor(size.width / 2),
     y: position.y + Math.floor(size.height / 2),
   };
-  tiles[point.y][point.x] = id === 'STAIRSUP' || id === 'USTAIRS' ? 'stairUp' : 'stairDown';
+  tiles[point.y][point.x] = id === 'STAIRSUP' || id === 'USTAIRS' || id === 'L3UP' ? 'stairUp' : 'stairDown';
   return {
     point,
     miniset: { id, role: 'stair', position, size, tries: FORCED_PLACEMENT_TRIES },

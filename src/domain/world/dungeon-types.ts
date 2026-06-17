@@ -35,7 +35,17 @@ export interface DungeonGridContract {
   };
 }
 
-export type DungeonMinisetId = 'STAIRSUP' | 'STAIRSDOWN' | 'LAMPS' | 'PWATERIN' | 'USTAIRS' | 'DSTAIRS' | 'WARPSTAIRS';
+export type DungeonMinisetId =
+  | 'STAIRSUP'
+  | 'STAIRSDOWN'
+  | 'LAMPS'
+  | 'PWATERIN'
+  | 'USTAIRS'
+  | 'DSTAIRS'
+  | 'WARPSTAIRS'
+  | 'L3UP'
+  | 'L3DOWN'
+  | 'L3HOLDWARP';
 
 export interface DungeonMinisetPlacement {
   id: DungeonMinisetId;
@@ -136,13 +146,99 @@ export interface CatacombsGenerationMetadata {
   minisetPlacements: readonly DungeonMinisetPlacement[];
 }
 
+export type CavesCleanupPass = 'diagonals' | 'singles' | 'straights' | 'edges';
+
+export interface CavesPoolMetadata {
+  position: GridPoint;
+  size: {
+    width: number;
+    height: number;
+  };
+  area: number;
+  placementGatePercent: 25;
+  tries: number;
+}
+
+export interface CavesAnvilReserveMetadata {
+  enabled: boolean;
+  rect?: GridRect;
+  searchLimit: 198;
+}
+
+export type CavesFixtureId = 'standard' | 'anvil-reserve';
+
+export interface CavesFixtureProfile {
+  id: CavesFixtureId;
+  reserveAnvil: boolean;
+}
+
+export interface CavesGenerationMetadata {
+  familyId: 'Caves';
+  generatorKind: 'cellular-cave';
+  attemptCount: number;
+  attemptSeed: number;
+  levelRange: {
+    min: 9;
+    max: 12;
+  };
+  seedRoom: {
+    origin: GridPoint;
+    size: {
+      width: 2;
+      height: 2;
+    };
+    originRange: {
+      min: 10;
+      max: 29;
+    };
+  };
+  fillRoomBounds: {
+    x1MinExclusive: 1;
+    x2MaxExclusive: 34;
+    y1MinExclusive: 1;
+    y2MaxExclusive: 38;
+  };
+  firstExpansion: {
+    blockSize: 2;
+    directions: readonly [0, 1, 2, 3];
+  };
+  cleanupPasses: readonly CavesCleanupPass[];
+  floorAreaThreshold: 600;
+  floorArea: number;
+  connectedFloorCount: number;
+  themeRoom: {
+    minSize: 5;
+    maxSize: 10;
+    floorTile: 7;
+    frequency: 0;
+    randomizeSize: false;
+  };
+  fencePass: {
+    scanBounds: {
+      min: 1;
+      max: 38;
+    };
+    horizontalGatePercent: 50;
+    verticalGatePercent: 50;
+  };
+  fixtureProfile: CavesFixtureProfile;
+  anvilReserve: CavesAnvilReserveMetadata;
+  pool: CavesPoolMetadata;
+  themeRooms: readonly GridRect[];
+  minisetPlacements: readonly DungeonMinisetPlacement[];
+}
+
 export interface PreviewGenerationMetadata {
-  familyId: Exclude<DungeonType, 'Cathedral' | 'Catacombs'>;
+  familyId: Exclude<DungeonType, 'Cathedral' | 'Catacombs' | 'Caves'>;
   generatorKind: 'preview-rooms';
   attemptCount: number;
 }
 
-export type DungeonGenerationMetadata = CathedralGenerationMetadata | CatacombsGenerationMetadata | PreviewGenerationMetadata;
+export type DungeonGenerationMetadata =
+  | CathedralGenerationMetadata
+  | CatacombsGenerationMetadata
+  | CavesGenerationMetadata
+  | PreviewGenerationMetadata;
 
 export interface DungeonLevel {
   dungeonType: DungeonType;

@@ -79,8 +79,12 @@ export function createDungeonComparisonSnapshot(result: DungeonGenerationResult)
       generatorKind: result.level.generation.generatorKind,
       areaThreshold: result.level.generation.familyId === 'Cathedral' ? result.level.generation.areaThreshold : undefined,
       maskTileCount: result.level.generation.familyId === 'Cathedral' ? result.level.generation.maskTileCount : undefined,
-      roomCount: result.level.generation.familyId === 'Catacombs' ? result.level.generation.rooms.length : undefined,
-      minisetCount: result.level.generation.familyId === 'Cathedral' || result.level.generation.familyId === 'Catacombs'
+      roomCount: result.level.generation.familyId === 'Catacombs'
+        ? result.level.generation.rooms.length
+        : result.level.generation.familyId === 'Caves'
+          ? result.level.generation.themeRooms.length
+        : undefined,
+      minisetCount: result.level.generation.familyId === 'Cathedral' || result.level.generation.familyId === 'Catacombs' || result.level.generation.familyId === 'Caves'
         ? result.level.generation.minisetPlacements.length
         : undefined,
       roomNodeCapacity: result.level.generation.familyId === 'Catacombs' ? result.level.generation.roomNodeCapacity : undefined,

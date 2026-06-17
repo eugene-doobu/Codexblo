@@ -1,4 +1,4 @@
-import { pointKey } from '../../../core/grid';
+import { pointKey, rectsOverlap } from '../../../core/grid';
 import type { GridPoint, GridRect } from '../../../core/grid';
 import type {
   DungeonConnectivityGraph,
@@ -115,6 +115,29 @@ export function validateDungeon(
     }
   }
 
+  if (level.generation.familyId === 'Caves') {
+    const generation = level.generation;
+    if (generation.floorArea < generation.floorAreaThreshold) {
+      issues.push({ rule: 'CavesAreaThreshold', severity: 'error', message: 'Caves floor area is below the documented threshold.' });
+    }
+    if (generation.connectedFloorCount !== generation.floorArea) {
+      issues.push({ rule: 'CavesConnectedFloor', severity: 'error', message: 'Caves floor mask must be a single connected component.' });
+    }
+    const minisetIds = new Set(generation.minisetPlacements.map((placement) => placement.id));
+    if (!minisetIds.has('L3UP') || !minisetIds.has('L3DOWN')) {
+      issues.push({ rule: 'CavesStairMinisets', severity: 'error', message: 'Caves must include up and down stair miniset metadata.' });
+    }
+    if (level.levelNumber === 9 && !minisetIds.has('L3HOLDWARP')) {
+      issues.push({ rule: 'CavesTownWarp', severity: 'error', message: 'Caves level 9 must include town warp miniset metadata.' });
+    }
+    if (generation.pool.area > 40) {
+      issues.push({ rule: 'CavesPoolSize', severity: 'error', message: 'Caves pool footprint must stay within the documented small-pool bound.' });
+    }
+    if (generation.anvilReserve.rect && rectsOverlap(generation.anvilReserve.rect, poolRect(generation.pool))) {
+      issues.push({ rule: 'CavesAnvilPoolSeparation', severity: 'error', message: 'Caves anvil reserve must not overlap the pool footprint.' });
+    }
+  }
+
   if (!resourceBindings.ok) {
     issues.push({ rule: 'ResourceBindingComplete', severity: 'error', message: `Missing resource bindings: ${resourceBindings.missingSemantics.join(', ')}` });
   }
@@ -128,9 +151,9 @@ export function validateDungeon(
       roomCount: level.rooms.length,
       doorCount: level.doors.length,
       zoneCount: level.zones.length,
-      maskTileCount: level.generation.familyId === 'Cathedral' ? level.generation.maskTileCount : undefined,
-      areaThreshold: level.generation.familyId === 'Cathedral' ? level.generation.areaThreshold : undefined,
-      minisetCount: level.generation.familyId === 'Cathedral' || level.generation.familyId === 'Catacombs'
+      maskTileCount: level.generation.familyId === 'Cathedral' ? level.generation.maskTileCount : level.generation.familyId === 'Caves' ? level.generation.floorArea : undefined,
+      areaThreshold: level.generation.familyId === 'Cathedral' ? level.generation.areaThreshold : level.generation.familyId === 'Caves' ? level.generation.floorAreaThreshold : undefined,
+      minisetCount: level.generation.familyId === 'Cathedral' || level.generation.familyId === 'Catacombs' || level.generation.familyId === 'Caves'
         ? level.generation.minisetPlacements.length
         : undefined,
     },
@@ -144,6 +167,15 @@ export function catacombsRoomWithinClamp(room: GridRect, clampBounds: { min: num
     && room.x + room.width - 1 <= clampBounds.max
     && room.y + room.height - 1 <= clampBounds.max
   );
+}
+
+function poolRect(pool: { position: GridPoint; size: { width: number; height: number } }): GridRect {
+  return {
+    x: pool.position.x,
+    y: pool.position.y,
+    width: pool.size.width,
+    height: pool.size.height,
+  };
 }
 
 export function rectPassable(level: DungeonLevel, area: GridRect, reachable: ReadonlySet<string>): boolean {

@@ -5,7 +5,6 @@
       "resourcePackId": "cathedral-lab-placeholder",
       "dungeonTypes": [
         "Cathedral",
-        "Caves",
         "Hell"
       ],
       "tileSize": {
@@ -122,6 +121,66 @@
           "height": 48
         }
       ]
+    },
+    {
+      "resourcePackId": "caves-lab-placeholder",
+      "dungeonTypes": [
+        "Caves"
+      ],
+      "tileSize": {
+        "width": 72,
+        "height": 48
+      },
+      "assets": [
+        {
+          "key": "caves.floor",
+          "kind": "image",
+          "semantic": "tile.floor",
+          "path": "/assets/caves/tile-floor.svg",
+          "width": 72,
+          "height": 48
+        },
+        {
+          "key": "caves.wall",
+          "kind": "image",
+          "semantic": "tile.wall",
+          "path": "/assets/caves/tile-wall.svg",
+          "width": 72,
+          "height": 48
+        },
+        {
+          "key": "caves.door",
+          "kind": "image",
+          "semantic": "tile.door",
+          "path": "/assets/caves/tile-door.svg",
+          "width": 72,
+          "height": 48
+        },
+        {
+          "key": "caves.stairUp",
+          "kind": "image",
+          "semantic": "tile.stairUp",
+          "path": "/assets/caves/tile-stair-up.svg",
+          "width": 72,
+          "height": 48
+        },
+        {
+          "key": "caves.stairDown",
+          "kind": "image",
+          "semantic": "tile.stairDown",
+          "path": "/assets/caves/tile-stair-down.svg",
+          "width": 72,
+          "height": 48
+        },
+        {
+          "key": "caves.void",
+          "kind": "image",
+          "semantic": "tile.void",
+          "path": "/assets/caves/tile-void.svg",
+          "width": 72,
+          "height": 48
+        }
+      ]
     }
   ],
   "assets": [
@@ -218,6 +277,54 @@
       "kind": "image",
       "semantic": "tile.void",
       "path": "/assets/catacombs/tile-void.svg",
+      "width": 72,
+      "height": 48
+    },
+    {
+      "key": "caves.floor",
+      "kind": "image",
+      "semantic": "tile.floor",
+      "path": "/assets/caves/tile-floor.svg",
+      "width": 72,
+      "height": 48
+    },
+    {
+      "key": "caves.wall",
+      "kind": "image",
+      "semantic": "tile.wall",
+      "path": "/assets/caves/tile-wall.svg",
+      "width": 72,
+      "height": 48
+    },
+    {
+      "key": "caves.door",
+      "kind": "image",
+      "semantic": "tile.door",
+      "path": "/assets/caves/tile-door.svg",
+      "width": 72,
+      "height": 48
+    },
+    {
+      "key": "caves.stairUp",
+      "kind": "image",
+      "semantic": "tile.stairUp",
+      "path": "/assets/caves/tile-stair-up.svg",
+      "width": 72,
+      "height": 48
+    },
+    {
+      "key": "caves.stairDown",
+      "kind": "image",
+      "semantic": "tile.stairDown",
+      "path": "/assets/caves/tile-stair-down.svg",
+      "width": 72,
+      "height": 48
+    },
+    {
+      "key": "caves.void",
+      "kind": "image",
+      "semantic": "tile.void",
+      "path": "/assets/caves/tile-void.svg",
       "width": 72,
       "height": 48
     }

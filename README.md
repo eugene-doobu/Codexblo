@@ -6,7 +6,7 @@ Browser ARPG prototype focused on a dungeon-first development loop.
 
 The current milestone is a dungeon-first vertical slice built with Codex:
 
-1. Generate Cathedral and Catacombs layouts from random or manual seeds.
+1. Generate Cathedral, Catacombs, and Caves layouts from random or manual seeds.
 2. Inspect layouts in a dev-only `DungeonGenerationLabScene` before player movement or combat.
 3. Render generated floor, wall, door, stair, collision, zone, and connectivity overlays.
 4. Export failing seeds as reproducible fixtures.
@@ -22,4 +22,4 @@ npm test
 npm run build
 ```
 
-Open `/dev/dungeon-lab?type=Cathedral&seed=123456789` or `/dev/dungeon-lab?type=Catacombs&level=5&seed=123456789` to jump directly into the dungeon generation lab.
+Open `/dev/dungeon-lab?type=Cathedral&seed=123456789`, `/dev/dungeon-lab?type=Catacombs&level=5&seed=123456789`, or `/dev/dungeon-lab?type=Caves&level=9&seed=123456789` to jump directly into the dungeon generation lab.

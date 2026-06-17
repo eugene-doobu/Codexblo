@@ -9,7 +9,7 @@ const packSpecs = [
     exportName: 'CATHEDRAL',
     keyPrefix: 'cathedral',
     label: 'Cathedral',
-    dungeonTypes: ['Cathedral', 'Caves', 'Hell'],
+    dungeonTypes: ['Cathedral', 'Hell'],
     sourcePath: join(root, 'resources/source/cathedral-palette.json'),
     outDir: join(root, 'public/assets/cathedral'),
   },
@@ -20,6 +20,14 @@ const packSpecs = [
     dungeonTypes: ['Catacombs'],
     sourcePath: join(root, 'resources/source/catacombs-palette.json'),
     outDir: join(root, 'public/assets/catacombs'),
+  },
+  {
+    exportName: 'CAVES',
+    keyPrefix: 'caves',
+    label: 'Caves',
+    dungeonTypes: ['Caves'],
+    sourcePath: join(root, 'resources/source/caves-palette.json'),
+    outDir: join(root, 'public/assets/caves'),
   },
 ];
 

@@ -6,7 +6,7 @@ export const DEFAULT_RESOURCE_PACK_ID = 'cathedral-lab-placeholder';
 export const DUNGEON_RESOURCE_PACK_IDS: Readonly<Record<DungeonType, string>> = {
   Cathedral: DEFAULT_RESOURCE_PACK_ID,
   Catacombs: 'catacombs-lab-placeholder',
-  Caves: DEFAULT_RESOURCE_PACK_ID,
+  Caves: 'caves-lab-placeholder',
   Hell: DEFAULT_RESOURCE_PACK_ID,
 };
 

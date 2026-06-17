@@ -11,6 +11,7 @@ import { rectsOverlap, type GridRect } from '../src/core/grid';
 
 const cathedralV2Checksum = '44a45a64';
 const catacombsBspChecksum = '919ab6df';
+const cavesCellularChecksum = 'fb139935';
 
 const baseRequest = createGenerationRequest({
   dungeonType: 'Cathedral',
@@ -23,6 +24,12 @@ const catacombsRequest = createGenerationRequest({
   levelNumber: 5,
   seedMode: 'manual',
   seedText: 'catacombs-test-seed',
+});
+const cavesRequest = createGenerationRequest({
+  dungeonType: 'Caves',
+  levelNumber: 9,
+  seedMode: 'manual',
+  seedText: 'caves-test-seed',
 });
 
 describe('Cathedral dungeon generation', () => {
@@ -278,6 +285,143 @@ describe('Catacombs dungeon generation', () => {
       roomCount: generation.rooms.length,
       minisetCount: generation.minisetPlacements.length,
       roomNodeCapacity: generation.roomNodeCapacity,
+    }));
+    expect(compareDungeonSnapshots(snapshot, {
+      width: snapshot.grid.width,
+      height: snapshot.grid.height,
+      rows: snapshot.tileRows,
+      checksum: snapshot.checksum,
+    }).identical).toBe(true);
+  });
+});
+
+describe('Caves dungeon generation', () => {
+  it('is deterministic and pins the Caves cellular fixture checksum', () => {
+    const first = generateDungeon(cavesRequest);
+    const second = generateDungeon(cavesRequest);
+
+    expect(first.seed).toBe(second.seed);
+    expect(first.level.checksum).toBe(cavesCellularChecksum);
+    expect(second.level.checksum).toBe(cavesCellularChecksum);
+    expect(first.level.tiles).toEqual(second.level.tiles);
+  });
+
+  it('uses the documented Caves grid, cellular, theme, pool, and miniset contracts', () => {
+    const result = generateDungeon(cavesRequest);
+    const generation = result.level.generation;
+
+    expect(result.request.resourcePackId).toBe(DUNGEON_RESOURCE_PACK_IDS.Caves);
+    expect(result.validation.ok).toBe(true);
+    expect(result.level.width).toBe(40);
+    expect(result.level.height).toBe(40);
+    expect(result.level.gridContract.expandedGrid).toEqual({ width: 112, height: 112, padding: 16, scale: 2 });
+    expect(generation.familyId).toBe('Caves');
+    if (generation.familyId !== 'Caves') {
+      throw new Error('Expected Caves metadata.');
+    }
+
+    expect(generation.generatorKind).toBe('cellular-cave');
+    expect(generation.levelRange).toEqual({ min: 9, max: 12 });
+    expect(generation.seedRoom.size).toEqual({ width: 2, height: 2 });
+    expect(generation.seedRoom.origin.x).toBeGreaterThanOrEqual(10);
+    expect(generation.seedRoom.origin.x).toBeLessThanOrEqual(29);
+    expect(generation.seedRoom.origin.y).toBeGreaterThanOrEqual(10);
+    expect(generation.seedRoom.origin.y).toBeLessThanOrEqual(29);
+    expect(generation.fillRoomBounds).toEqual({ x1MinExclusive: 1, x2MaxExclusive: 34, y1MinExclusive: 1, y2MaxExclusive: 38 });
+    expect(generation.firstExpansion).toEqual({ blockSize: 2, directions: [0, 1, 2, 3] });
+    expect(generation.cleanupPasses).toEqual(['diagonals', 'singles', 'straights', 'diagonals', 'edges']);
+    expect(generation.floorArea).toBeGreaterThanOrEqual(generation.floorAreaThreshold);
+    expect(generation.connectedFloorCount).toBe(generation.floorArea);
+    expect(generation.themeRoom).toEqual({ minSize: 5, maxSize: 10, floorTile: 7, frequency: 0, randomizeSize: false });
+    expect(generation.fencePass).toEqual({ scanBounds: { min: 1, max: 38 }, horizontalGatePercent: 50, verticalGatePercent: 50 });
+    expect(generation.fixtureProfile).toEqual({ id: 'standard', reserveAnvil: false });
+    expect(generation.themeRooms.length).toBeGreaterThanOrEqual(1);
+    expect(generation.pool.area).toBeGreaterThan(4);
+    expect(generation.pool.area).toBeLessThanOrEqual(40);
+    expect(generation.pool.placementGatePercent).toBe(25);
+    expect(generation.minisetPlacements).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'L3UP', role: 'stair', size: { width: 3, height: 3 }, tries: 1600 }),
+        expect.objectContaining({ id: 'L3DOWN', role: 'stair', size: { width: 3, height: 3 }, tries: 1600 }),
+        expect.objectContaining({ id: 'L3HOLDWARP', role: 'portal', size: { width: 3, height: 3 }, tries: 1600 }),
+      ]),
+    );
+  });
+
+  it('keeps Caves floors, stairs, zones, and all passable tiles connected', () => {
+    const result = generateDungeon(cavesRequest);
+
+    expect(result.validation.ok).toBe(true);
+    expect(result.resourceBindings.ok).toBe(true);
+    expect(result.graph.unreachablePassableTiles).toHaveLength(0);
+    expect(result.validation.metrics.reachableTileCount).toBe(result.validation.metrics.passableTileCount);
+    expect(result.validation.metrics.zoneCount).toBe(3);
+  });
+
+  it('omits the level-9 town warp on deeper Caves levels', () => {
+    const result = generateDungeon(createGenerationRequest({ dungeonType: 'Caves', levelNumber: 10, seedText: 'caves-l10-test-seed' }));
+    const generation = result.level.generation;
+
+    expect(result.validation.ok).toBe(true);
+    expect(result.level.checksum).toBe('a18e7367');
+    expect(generation.familyId).toBe('Caves');
+    if (generation.familyId !== 'Caves') {
+      throw new Error('Expected Caves metadata.');
+    }
+    expect(generation.minisetPlacements.map((placement) => placement.id)).toEqual(['L3UP', 'L3DOWN']);
+  });
+
+  it('supports the Caves anvil fixture reserve without colliding with the pool', () => {
+    const result = generateDungeon(createGenerationRequest({
+      dungeonType: 'Caves',
+      levelNumber: 9,
+      seedMode: 'fixture',
+      seedText: 'caves-anvil',
+    }));
+    const generation = result.level.generation;
+
+    expect(result.validation.ok).toBe(true);
+    expect(result.level.checksum).toBe('2a23b51f');
+    expect(generation.familyId).toBe('Caves');
+    if (generation.familyId !== 'Caves') {
+      throw new Error('Expected Caves metadata.');
+    }
+    expect(generation.anvilReserve).toEqual(expect.objectContaining({
+      enabled: true,
+      rect: expect.objectContaining({ width: 13, height: 13 }),
+      searchLimit: 198,
+    }));
+    expect(generation.fixtureProfile).toEqual({ id: 'anvil-reserve', reserveAnvil: true });
+    expect(generation.themeRooms.every((room) => !rectsOverlap(room, generation.anvilReserve.rect!))).toBe(true);
+    expect(rectsOverlap(generation.anvilReserve.rect!, {
+      x: generation.pool.position.x,
+      y: generation.pool.position.y,
+      width: generation.pool.size.width,
+      height: generation.pool.size.height,
+    })).toBe(false);
+  });
+
+  it('accepts numeric manual seeds directly for Caves snapshot comparison', () => {
+    const result = generateDungeon(createGenerationRequest({ dungeonType: 'Caves', levelNumber: 9, seedText: '123456789' }));
+
+    expect(result.seed).toBe(123456789);
+    expect(result.level.checksum).toBe('6041227e');
+    expect(result.validation.ok).toBe(true);
+  });
+
+  it('creates comparable Caves grid snapshots with generation metadata', () => {
+    const result = generateDungeon(cavesRequest);
+    const generation = result.level.generation;
+    if (generation.familyId !== 'Caves') {
+      throw new Error('Expected Caves metadata.');
+    }
+
+    const snapshot = createDungeonComparisonSnapshot(result);
+    expect(snapshot.generation).toEqual(expect.objectContaining({
+      familyId: 'Caves',
+      generatorKind: 'cellular-cave',
+      roomCount: generation.themeRooms.length,
+      minisetCount: generation.minisetPlacements.length,
     }));
     expect(compareDungeonSnapshots(snapshot, {
       width: snapshot.grid.width,

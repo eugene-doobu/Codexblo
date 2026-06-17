@@ -1,0 +1,12 @@
+{
+  "theme": "caves-lab-placeholder",
+  "tileSize": { "width": 72, "height": 48 },
+  "palette": {
+    "floor": ["#384236", "#5f6f4f", "#20281f"],
+    "wall": ["#2a302a", "#8c956f", "#4a5542"],
+    "door": ["#3c2a1d", "#a9804f", "#18110c"],
+    "stairUp": ["#44513e", "#c5bd7a", "#232b22"],
+    "stairDown": ["#26301f", "#978a58", "#12170f"],
+    "void": ["#040604", "#11160f", "#000000"]
+  }
+}

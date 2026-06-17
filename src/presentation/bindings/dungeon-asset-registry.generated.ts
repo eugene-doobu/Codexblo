@@ -111,6 +111,62 @@ export const CATACOMBS_ASSET_REGISTRY = [
     "height": 48
   }
 ] as const satisfies readonly AssetManifestEntry[];
+
+export const CAVES_RESOURCE_PACK_ID = "caves-lab-placeholder";
+export const CAVES_TILE_SIZE = {
+  "width": 72,
+  "height": 48
+} as const;
+export const CAVES_ASSET_REGISTRY = [
+  {
+    "key": "caves.floor",
+    "kind": "image",
+    "semantic": "tile.floor",
+    "path": "/assets/caves/tile-floor.svg",
+    "width": 72,
+    "height": 48
+  },
+  {
+    "key": "caves.wall",
+    "kind": "image",
+    "semantic": "tile.wall",
+    "path": "/assets/caves/tile-wall.svg",
+    "width": 72,
+    "height": 48
+  },
+  {
+    "key": "caves.door",
+    "kind": "image",
+    "semantic": "tile.door",
+    "path": "/assets/caves/tile-door.svg",
+    "width": 72,
+    "height": 48
+  },
+  {
+    "key": "caves.stairUp",
+    "kind": "image",
+    "semantic": "tile.stairUp",
+    "path": "/assets/caves/tile-stair-up.svg",
+    "width": 72,
+    "height": 48
+  },
+  {
+    "key": "caves.stairDown",
+    "kind": "image",
+    "semantic": "tile.stairDown",
+    "path": "/assets/caves/tile-stair-down.svg",
+    "width": 72,
+    "height": 48
+  },
+  {
+    "key": "caves.void",
+    "kind": "image",
+    "semantic": "tile.void",
+    "path": "/assets/caves/tile-void.svg",
+    "width": 72,
+    "height": 48
+  }
+] as const satisfies readonly AssetManifestEntry[];
 export const DUNGEON_ASSET_REGISTRY = [
   {
     "key": "cathedral.floor",
@@ -205,6 +261,54 @@ export const DUNGEON_ASSET_REGISTRY = [
     "kind": "image",
     "semantic": "tile.void",
     "path": "/assets/catacombs/tile-void.svg",
+    "width": 72,
+    "height": 48
+  },
+  {
+    "key": "caves.floor",
+    "kind": "image",
+    "semantic": "tile.floor",
+    "path": "/assets/caves/tile-floor.svg",
+    "width": 72,
+    "height": 48
+  },
+  {
+    "key": "caves.wall",
+    "kind": "image",
+    "semantic": "tile.wall",
+    "path": "/assets/caves/tile-wall.svg",
+    "width": 72,
+    "height": 48
+  },
+  {
+    "key": "caves.door",
+    "kind": "image",
+    "semantic": "tile.door",
+    "path": "/assets/caves/tile-door.svg",
+    "width": 72,
+    "height": 48
+  },
+  {
+    "key": "caves.stairUp",
+    "kind": "image",
+    "semantic": "tile.stairUp",
+    "path": "/assets/caves/tile-stair-up.svg",
+    "width": 72,
+    "height": 48
+  },
+  {
+    "key": "caves.stairDown",
+    "kind": "image",
+    "semantic": "tile.stairDown",
+    "path": "/assets/caves/tile-stair-down.svg",
+    "width": 72,
+    "height": 48
+  },
+  {
+    "key": "caves.void",
+    "kind": "image",
+    "semantic": "tile.void",
+    "path": "/assets/caves/tile-void.svg",
     "width": 72,
     "height": 48
   }
