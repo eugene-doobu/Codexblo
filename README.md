@@ -8,7 +8,7 @@ The current milestone is a dungeon-first vertical slice built with Codex:
 
 1. Generate Cathedral, Catacombs, Caves, and Hell layouts from random or manual seeds.
 2. Inspect layouts in a dev-only `DungeonGenerationLabScene` before player movement or combat.
-3. Render generated floor, wall, door, stair, collision, zone, and connectivity overlays.
+3. Render generated floor, wall, door, stair, collision, zone, object preset, and connectivity overlays.
 4. Export failing seeds as reproducible fixtures.
 5. Keep the runtime single-player only.
 

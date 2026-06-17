@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { GridPoint, GridRect } from '../../core/grid';
-import type { DungeonGenerationResult, TileKind } from '../../domain/world/dungeon-generator';
+import type { DungeonGenerationResult, DungeonObjectCategory, DungeonObjectPlacement, TileKind } from '../../domain/world/dungeon-generator';
 import { isPassable } from '../../domain/world/dungeon-generator';
 import { tileAssetKeysForResourcePack } from '../bindings/dungeon-assets';
 import { ISO_TILE_FOOTPRINT, type GridSize, toIso } from './isometric-projection';
@@ -10,6 +10,7 @@ export interface DebugOverlayOptions {
   showCollision: boolean;
   showConnectivity: boolean;
   showZones: boolean;
+  showObjects: boolean;
 }
 
 export interface RenderedTileSnapshot {
@@ -25,6 +26,20 @@ export interface DungeonRenderSnapshot {
   gridSize: GridSize;
   tileFootprint: typeof ISO_TILE_FOOTPRINT;
   renderedTiles: readonly RenderedTileSnapshot[];
+  renderedObjects: readonly RenderedObjectSnapshot[];
+}
+
+export interface RenderedObjectSnapshot {
+  id: string;
+  presetId: string;
+  category: DungeonObjectCategory;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  blocksMovement: boolean;
+  screenX: number;
+  screenY: number;
 }
 
 export class DungeonDebugRenderer {
@@ -39,6 +54,7 @@ export class DungeonDebugRenderer {
     const gridSize = { width: level.width, height: level.height };
     const tileAssetKeys = tileAssetKeysForResourcePack(result.request.resourcePackId);
     const renderedTiles: RenderedTileSnapshot[] = [];
+    const renderedObjects = objectSnapshots(level.objects ?? [], gridSize);
 
     for (let y = 0; y < level.height; y += 1) {
       for (let x = 0; x < level.width; x += 1) {
@@ -80,11 +96,15 @@ export class DungeonDebugRenderer {
     if (options.showZones) {
       this.drawZones(result);
     }
+    if (options.showObjects) {
+      this.drawObjects(result);
+    }
 
     return {
       gridSize,
       tileFootprint: ISO_TILE_FOOTPRINT,
       renderedTiles,
+      renderedObjects,
     };
   }
 
@@ -149,10 +169,19 @@ export class DungeonDebugRenderer {
     }
   }
 
-  private drawRect(rect: GridRect, gridSize: GridSize, color: number): void {
+  private drawObjects(result: DungeonGenerationResult): void {
+    if (!this.overlay) {
+      return;
+    }
+    for (const object of result.level.objects ?? []) {
+      this.drawRect(objectRect(object), result.level, objectColor(object.category), object.blocksMovement ? 0.34 : 0.2);
+    }
+  }
+
+  private drawRect(rect: GridRect, gridSize: GridSize, color: number, alpha = 0.22): void {
     for (let y = rect.y; y < rect.y + rect.height; y += 1) {
       for (let x = rect.x; x < rect.x + rect.width; x += 1) {
-        this.fillDiamond({ x, y }, gridSize, color, 0.22);
+        this.fillDiamond({ x, y }, gridSize, color, alpha);
       }
     }
   }
@@ -173,6 +202,48 @@ export class DungeonDebugRenderer {
     const points = diamondPoints(point, gridSize);
     this.overlay.fillStyle(color, alpha);
     this.overlay.fillPoints(points, true, true);
+  }
+}
+
+function objectSnapshots(objects: readonly DungeonObjectPlacement[], gridSize: GridSize): RenderedObjectSnapshot[] {
+  return objects.map((object) => {
+    const screen = toIso(object.position, gridSize);
+    return {
+      id: object.id,
+      presetId: object.presetId,
+      category: object.category,
+      x: object.position.x,
+      y: object.position.y,
+      width: object.size.width,
+      height: object.size.height,
+      blocksMovement: object.blocksMovement,
+      screenX: screen.x,
+      screenY: screen.y,
+    };
+  });
+}
+
+function objectRect(object: DungeonObjectPlacement): GridRect {
+  return {
+    x: object.position.x,
+    y: object.position.y,
+    width: object.size.width,
+    height: object.size.height,
+  };
+}
+
+function objectColor(category: DungeonObjectCategory): number {
+  switch (category) {
+    case 'shrine':
+      return 0xf59e0b;
+    case 'lore':
+      return 0x22c55e;
+    case 'container':
+      return 0xd97706;
+    case 'tomb':
+      return 0x94a3b8;
+    case 'rack':
+      return 0xef4444;
   }
 }
 

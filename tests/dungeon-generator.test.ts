@@ -9,9 +9,10 @@ import {
   type DungeonType,
 } from '../src/domain/world/dungeon-generator';
 import { compareDungeonSnapshots, createDungeonComparisonSnapshot } from '../src/domain/world/dungeon-comparison';
+import { validateDungeon } from '../src/domain/world/generation/dungeon-validation';
 import { rectsOverlap, type GridRect } from '../src/core/grid';
 
-const cathedralV2Checksum = '44a45a64';
+const cathedralV2Checksum = 'da772d21';
 const catacombsBspChecksum = '919ab6df';
 const cavesCellularChecksum = 'fb139935';
 const hellQuadrantMirrorChecksum = '70d5d85a';
@@ -103,6 +104,107 @@ describe('Cathedral dungeon generation', () => {
     expect(lampCount).toBeLessThanOrEqual(9);
   });
 
+  it('places deterministic Cathedral object presets on valid non-overlapping footprints', () => {
+    const result = generateDungeon(baseRequest);
+    const generation = result.level.generation;
+
+    expect(result.validation.ok).toBe(true);
+    expect(generation.familyId).toBe('Cathedral');
+    if (generation.familyId !== 'Cathedral') {
+      throw new Error('Expected Cathedral metadata.');
+    }
+
+    const objects = result.level.objects ?? [];
+    expect(generation.objectPresetProfile.enabled).toBe(true);
+    expect(generation.objectPresetProfile.placementOrder).toEqual(['SHRINE', 'BOOKCASE', 'BARREL_CLUSTER', 'SARCOPHAGUS', 'WEAPON_RACK']);
+    expect(result.validation.metrics.objectCount).toBe(objects.length);
+    expect(objects).toHaveLength(12);
+    expect(objects.map((object) => object.presetId)).toEqual([
+      'SHRINE',
+      'BOOKCASE',
+      'BOOKCASE',
+      'BARREL_CLUSTER',
+      'BARREL_CLUSTER',
+      'BARREL_CLUSTER',
+      'BARREL_CLUSTER',
+      'BARREL_CLUSTER',
+      'BARREL_CLUSTER',
+      'SARCOPHAGUS',
+      'SARCOPHAGUS',
+      'WEAPON_RACK',
+    ]);
+    expect(new Set(objects.map((object) => object.category))).toEqual(new Set(['shrine', 'lore', 'container', 'tomb', 'rack']));
+
+    const occupied: GridRect[] = [];
+    const minisetFootprints = generation.minisetPlacements.map((placement) => ({
+      x: placement.position.x,
+      y: placement.position.y,
+      width: placement.size.width,
+      height: placement.size.height,
+    }));
+    const protectedZones = result.level.zones.filter((zone) => zone.kind !== 'object').map((zone) => zone.rect);
+    for (const object of objects) {
+      const footprint = {
+        x: object.position.x,
+        y: object.position.y,
+        width: object.size.width,
+        height: object.size.height,
+      };
+      expect(object.blocksMovement).toBe(true);
+      expect(object.tries).toBe(1600);
+      expect(footprintContainsOnlyPassable(result, footprint)).toBe(true);
+      expect(occupied.some((existing) => rectsOverlap(existing, footprint))).toBe(false);
+      expect(minisetFootprints.some((existing) => rectsOverlap(existing, footprint))).toBe(false);
+      expect(protectedZones.some((existing) => rectsOverlap(existing, footprint))).toBe(false);
+      occupied.push(footprint);
+    }
+  });
+
+  it('can disable Cathedral object preset placement from the lab request', () => {
+    const result = generateDungeon(createGenerationRequest({ ...baseRequest, includeObjects: false }));
+    const generation = result.level.generation;
+
+    expect(result.validation.ok).toBe(true);
+    expect(result.level.objects).toEqual([]);
+    expect(generation.familyId).toBe('Cathedral');
+    if (generation.familyId !== 'Cathedral') {
+      throw new Error('Expected Cathedral metadata.');
+    }
+    expect(generation.objectPresetProfile.enabled).toBe(false);
+  });
+
+  it('rejects Cathedral object preset ids outside the enabled profile', () => {
+    const result = generateDungeon(baseRequest);
+    const objects = result.level.objects ?? [];
+    const firstObject = objects[0];
+    if (!firstObject) {
+      throw new Error('Expected Cathedral object presets.');
+    }
+    const invalidLevel = {
+      ...result.level,
+      objects: [
+        ...objects,
+        {
+          ...firstObject,
+          id: 'unknown-object-preset',
+          presetId: 'UNKNOWN_PRESET' as typeof firstObject.presetId,
+        },
+      ],
+    };
+
+    const validation = validateDungeon(invalidLevel, result.graph, result.resourceBindings);
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule: 'CathedralObjectPresetCoverage',
+          message: expect.stringContaining('UNKNOWN_PRESET'),
+        }),
+      ]),
+    );
+  });
+
   it('keeps recursive Cathedral side rooms from overlapping the existing mask', () => {
     const result = generateDungeon(createGenerationRequest({ dungeonType: 'Cathedral', levelNumber: 1, seedText: '0' }));
     const generation = result.level.generation;
@@ -130,6 +232,7 @@ describe('Cathedral dungeon generation', () => {
     const result = generateDungeon(createGenerationRequest({ dungeonType: 'Cathedral', levelNumber: 1, seedText: '123456789' }));
 
     expect(result.seed).toBe(123456789);
+    expect(result.level.checksum).toBe('80d79b82');
     expect(result.validation.ok).toBe(true);
   });
 
@@ -141,6 +244,10 @@ describe('Cathedral dungeon generation', () => {
     changedRows[0] = `${changedRows[0].slice(0, -1)}x`;
 
     expect(compareDungeonSnapshots(snapshot, copy).identical).toBe(true);
+    expect(snapshot.requestOptions.includeObjects).toBe(true);
+    expect(snapshot.requestOptions.includeSpawnZones).toBe(true);
+    expect(snapshot.requestOptions.includeQuestLocks).toBe(true);
+    expect(snapshot.generation.objectCount).toBe(result.level.objects?.length);
     const comparison = compareDungeonSnapshots(snapshot, { width: snapshot.grid.width, height: snapshot.grid.height, rows: changedRows });
     expect(comparison.identical).toBe(false);
     expect(comparison.mismatchCount).toBe(1);
@@ -597,4 +704,15 @@ function expectHellPassabilityMirror(result: DungeonGenerationResult): void {
       expect(isPassable(tiles[height - y - 1][width - x - 1])).toBe(passable);
     }
   }
+}
+
+function footprintContainsOnlyPassable(result: DungeonGenerationResult, footprint: GridRect): boolean {
+  for (let y = footprint.y; y < footprint.y + footprint.height; y += 1) {
+    for (let x = footprint.x; x < footprint.x + footprint.width; x += 1) {
+      if (!result.level.tiles[y]?.[x] || !isPassable(result.level.tiles[y][x])) {
+        return false;
+      }
+    }
+  }
+  return true;
 }

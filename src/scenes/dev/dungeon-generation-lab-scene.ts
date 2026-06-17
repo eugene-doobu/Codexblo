@@ -1,16 +1,14 @@
 import Phaser from 'phaser';
 import {
-  createGenerationRequest,
   generateDungeon,
   type DungeonGenerationRequest,
   type DungeonGenerationResult,
-  type DungeonType,
-  type SeedMode,
 } from '../../domain/world/dungeon-generator';
 import { createDungeonComparisonSnapshot, type DungeonComparisonSnapshot } from '../../domain/world/dungeon-comparison';
 import { DungeonDebugRenderer, type DebugOverlayOptions, type DungeonRenderSnapshot } from '../../presentation/dev/dungeon-debug-overlay';
 import { ISO_TILE_FOOTPRINT, isoGridBounds, toIso, type IsoBounds } from '../../presentation/dev/isometric-projection';
 import { requestFromLocation } from '../../runtime/route';
+import { buildDungeonLabRequest } from './dungeon-lab-request';
 
 const CAMERA_VIEW_PADDING = 96;
 const MIN_CAMERA_ZOOM = 0.22;
@@ -95,6 +93,7 @@ export class DungeonGenerationLabScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-C', () => this.controls?.copyFixture());
     this.input.keyboard?.on('keydown-G', () => this.controls?.toggle('showGrid'));
     this.input.keyboard?.on('keydown-V', () => this.controls?.toggle('showConnectivity'));
+    this.input.keyboard?.on('keydown-O', () => this.controls?.toggle('showObjects'));
   }
 }
 
@@ -211,6 +210,7 @@ interface ControlFields {
   showCollision: HTMLInputElement;
   showConnectivity: HTMLInputElement;
   showZones: HTMLInputElement;
+  showObjects: HTMLInputElement;
   status: HTMLPreElement;
 }
 
@@ -255,6 +255,7 @@ function createControls(onGenerate: (request: DungeonGenerationRequest, options:
       <label class="lab-check"><input id="show-collision" type="checkbox" checked /> Collision</label>
       <label class="lab-check"><input id="show-connectivity" type="checkbox" checked /> Connectivity</label>
       <label class="lab-check"><input id="show-zones" type="checkbox" checked /> Zones</label>
+      <label class="lab-check"><input id="show-objects" type="checkbox" checked /> Objects</label>
       <div class="lab-row">
         <button id="generate-button" type="button">Generate</button>
         <button id="randomize-button" type="button">Randomize</button>
@@ -276,19 +277,19 @@ function createControls(onGenerate: (request: DungeonGenerationRequest, options:
     showCollision: required<HTMLInputElement>('#show-collision'),
     showConnectivity: required<HTMLInputElement>('#show-connectivity'),
     showZones: required<HTMLInputElement>('#show-zones'),
+    showObjects: required<HTMLInputElement>('#show-objects'),
     status: required<HTMLPreElement>('#lab-status'),
   };
 
-  const submit = () => onGenerate(buildRequest(fields), buildOptions(fields));
+  let latestResult: DungeonGenerationResult | undefined;
+  const submit = () => onGenerate(buildRequest(fields, latestResult?.request), buildOptions(fields));
   required<HTMLButtonElement>('#generate-button').addEventListener('click', submit);
   required<HTMLButtonElement>('#randomize-button').addEventListener('click', () => randomize());
   required<HTMLButtonElement>('#copy-seed-button').addEventListener('click', () => void copyText(fields.seedText.value));
   required<HTMLButtonElement>('#copy-fixture-button').addEventListener('click', () => copyFixture());
-  for (const checkbox of [fields.showGrid, fields.showCollision, fields.showConnectivity, fields.showZones]) {
+  for (const checkbox of [fields.showGrid, fields.showCollision, fields.showConnectivity, fields.showZones, fields.showObjects]) {
     checkbox.addEventListener('change', submit);
   }
-
-  let latestResult: DungeonGenerationResult | undefined;
 
   function randomize(): void {
     fields.seedMode.value = 'random';
@@ -331,6 +332,7 @@ function createControls(onGenerate: (request: DungeonGenerationRequest, options:
         showCollision: fields.showCollision,
         showConnectivity: fields.showConnectivity,
         showZones: fields.showZones,
+        showObjects: fields.showObjects,
       } satisfies Record<keyof DebugOverlayOptions, HTMLInputElement>;
       map[option].checked = !map[option].checked;
       submit();
@@ -338,13 +340,13 @@ function createControls(onGenerate: (request: DungeonGenerationRequest, options:
   };
 }
 
-function buildRequest(fields: ControlFields): DungeonGenerationRequest {
-  return createGenerationRequest({
-    dungeonType: fields.dungeonType.value as DungeonType,
-    levelNumber: Number(fields.levelNumber.value) || 1,
-    seedMode: fields.seedMode.value as SeedMode,
+function buildRequest(fields: ControlFields, previousRequest?: DungeonGenerationRequest): DungeonGenerationRequest {
+  return buildDungeonLabRequest({
+    dungeonType: fields.dungeonType.value,
+    levelNumber: fields.levelNumber.value,
+    seedMode: fields.seedMode.value,
     seedText: fields.seedText.value,
-  });
+  }, previousRequest);
 }
 
 function buildOptions(fields: ControlFields): DebugOverlayOptions {
@@ -353,6 +355,7 @@ function buildOptions(fields: ControlFields): DebugOverlayOptions {
     showCollision: fields.showCollision.checked,
     showConnectivity: fields.showConnectivity.checked,
     showZones: fields.showZones.checked,
+    showObjects: fields.showObjects.checked,
   };
 }
 
@@ -368,6 +371,9 @@ function statusText(result: DungeonGenerationResult): string {
     result.validation.metrics.minisetCount === undefined
       ? undefined
       : `minisets=${result.validation.metrics.minisetCount}`,
+    result.validation.metrics.objectCount === undefined
+      ? undefined
+      : `objects=${result.validation.metrics.objectCount}`,
   ].filter(Boolean);
   const extraMetrics = metrics.length === 0 ? '' : `\n${metrics.join(' ')}`;
   return `${state}\nseed=${result.seed}\nchecksum=${result.level.checksum}\nrooms=${result.validation.metrics.roomCount} doors=${result.validation.metrics.doorCount}\npassable=${result.validation.metrics.passableTileCount} reachable=${result.validation.metrics.reachableTileCount}${extraMetrics}\n\n${issues}`;

@@ -63,6 +63,41 @@ export interface DungeonMinisetPlacement {
   tries: number;
 }
 
+export type DungeonObjectPresetId = 'SHRINE' | 'BOOKCASE' | 'BARREL_CLUSTER' | 'SARCOPHAGUS' | 'WEAPON_RACK';
+export type DungeonObjectCategory = 'shrine' | 'lore' | 'container' | 'tomb' | 'rack';
+
+export interface DungeonObjectPlacement {
+  id: string;
+  presetId: DungeonObjectPresetId;
+  category: DungeonObjectCategory;
+  position: GridPoint;
+  size: {
+    width: number;
+    height: number;
+  };
+  blocksMovement: boolean;
+  tries: number;
+}
+
+export interface CathedralObjectPresetProfile {
+  enabled: boolean;
+  placementOrder: readonly DungeonObjectPresetId[];
+  presets: readonly {
+    id: DungeonObjectPresetId;
+    category: DungeonObjectCategory;
+    size: {
+      width: number;
+      height: number;
+    };
+    count: {
+      min: number;
+      max: number;
+    };
+    blocksMovement: boolean;
+    tries: number;
+  }[];
+}
+
 export interface CathedralGenerationMetadata {
   familyId: 'Cathedral';
   generatorKind: 'chamber-recursive';
@@ -81,6 +116,7 @@ export interface CathedralGenerationMetadata {
   hallMask: GridRect;
   pillarPositions: readonly GridPoint[];
   minisetPlacements: readonly DungeonMinisetPlacement[];
+  objectPresetProfile: CathedralObjectPresetProfile;
 }
 
 export type CatacombsHallDirection = 'Up' | 'Right' | 'Down' | 'Left';
@@ -310,6 +346,7 @@ export interface DungeonLevel {
     down?: GridPoint;
   };
   zones: DungeonZone[];
+  objects?: readonly DungeonObjectPlacement[];
   generation: DungeonGenerationMetadata;
   checksum: string;
 }
@@ -337,6 +374,7 @@ export interface DungeonValidationReport {
     roomCount: number;
     doorCount: number;
     zoneCount: number;
+    objectCount?: number;
     maskTileCount?: number;
     areaThreshold?: number;
     minisetCount?: number;

@@ -23,6 +23,11 @@ export interface DungeonComparisonSnapshot {
     height: number;
   };
   checksum: string;
+  requestOptions: {
+    includeObjects: boolean;
+    includeSpawnZones: boolean;
+    includeQuestLocks: boolean;
+  };
   tileRows: string[];
   legend: Record<TileKind, string>;
   generation: {
@@ -32,6 +37,7 @@ export interface DungeonComparisonSnapshot {
     maskTileCount?: number;
     roomCount?: number;
     minisetCount?: number;
+    objectCount?: number;
     roomNodeCapacity?: number;
   };
 }
@@ -72,6 +78,11 @@ export function createDungeonComparisonSnapshot(result: DungeonGenerationResult)
       height: result.level.height,
     },
     checksum: result.level.checksum,
+    requestOptions: {
+      includeObjects: result.request.includeObjects,
+      includeSpawnZones: result.request.includeSpawnZones,
+      includeQuestLocks: result.request.includeQuestLocks,
+    },
     tileRows: result.level.tiles.map((row) => row.map((tile) => TILE_TO_SYMBOL[tile]).join('')),
     legend: TILE_TO_SYMBOL,
     generation: {
@@ -97,6 +108,7 @@ export function createDungeonComparisonSnapshot(result: DungeonGenerationResult)
       minisetCount: result.level.generation.familyId === 'Cathedral' || result.level.generation.familyId === 'Catacombs' || result.level.generation.familyId === 'Caves' || result.level.generation.familyId === 'Hell'
         ? result.level.generation.minisetPlacements.length
         : undefined,
+      objectCount: result.level.objects?.length,
       roomNodeCapacity: result.level.generation.familyId === 'Catacombs' ? result.level.generation.roomNodeCapacity : undefined,
     },
   };

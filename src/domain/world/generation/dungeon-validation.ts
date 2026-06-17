@@ -95,6 +95,8 @@ export function validateDungeon(
     if (lampCount < 5 || lampCount > 9) {
       issues.push({ rule: 'CathedralLampCount', severity: 'error', message: 'Cathedral lamp miniset count must be between 5 and 9.' });
     }
+    issues.push(...validateObjectPlacements(level, reachable));
+    issues.push(...validateCathedralObjectPresetCoverage(level));
   }
 
   if (level.generation.familyId === 'Catacombs') {
@@ -183,6 +185,7 @@ export function validateDungeon(
       roomCount: level.rooms.length,
       doorCount: level.doors.length,
       zoneCount: level.zones.length,
+      objectCount: level.objects?.length,
       maskTileCount: level.generation.familyId === 'Cathedral' ? level.generation.maskTileCount : level.generation.familyId === 'Caves' || level.generation.familyId === 'Hell' ? level.generation.floorArea : undefined,
       areaThreshold: level.generation.familyId === 'Cathedral' ? level.generation.areaThreshold : level.generation.familyId === 'Caves' ? level.generation.floorAreaThreshold : level.generation.familyId === 'Hell' ? level.generation.areaThreshold : undefined,
       minisetCount: level.generation.familyId === 'Cathedral' || level.generation.familyId === 'Catacombs' || level.generation.familyId === 'Caves' || level.generation.familyId === 'Hell'
@@ -190,6 +193,66 @@ export function validateDungeon(
         : undefined,
     },
   };
+}
+
+function validateObjectPlacements(level: DungeonLevel, reachable: ReadonlySet<string>): DungeonValidationIssue[] {
+  const issues: DungeonValidationIssue[] = [];
+  const objects = level.objects ?? [];
+  const occupied: GridRect[] = [];
+
+  for (const object of objects) {
+    const area = objectRect(object);
+    if (!rectPassable(level, area, reachable)) {
+      issues.push({
+        rule: 'ObjectPresetFits',
+        severity: 'error',
+        message: `Object preset ${object.id} overlaps blocked or unreachable cells.`,
+      });
+    }
+    if (occupied.some((existing) => rectsOverlap(existing, area))) {
+      issues.push({
+        rule: 'ObjectPresetOverlap',
+        severity: 'error',
+        message: `Object preset ${object.id} overlaps another object preset.`,
+      });
+    }
+    occupied.push(area);
+  }
+
+  return issues;
+}
+
+function validateCathedralObjectPresetCoverage(level: DungeonLevel): DungeonValidationIssue[] {
+  const issues: DungeonValidationIssue[] = [];
+  if (level.generation.familyId !== 'Cathedral' || !level.generation.objectPresetProfile.enabled) {
+    return issues;
+  }
+
+  const expectedPresetIds = new Set(level.generation.objectPresetProfile.presets.map((preset) => preset.id));
+  const countsByPreset = new Map<string, number>();
+  for (const object of level.objects ?? []) {
+    if (!expectedPresetIds.has(object.presetId)) {
+      issues.push({
+        rule: 'CathedralObjectPresetCoverage',
+        severity: 'error',
+        message: `Cathedral object preset is not part of the enabled profile: ${object.presetId}.`,
+      });
+    }
+    countsByPreset.set(object.presetId, (countsByPreset.get(object.presetId) ?? 0) + 1);
+  }
+
+  for (const preset of level.generation.objectPresetProfile.presets) {
+    const count = countsByPreset.get(preset.id) ?? 0;
+    if (count < preset.count.min || count > preset.count.max) {
+      issues.push({
+        rule: 'CathedralObjectPresetCoverage',
+        severity: 'error',
+        message: `Cathedral object preset ${preset.id} count must be between ${preset.count.min} and ${preset.count.max}; got ${count}.`,
+      });
+    }
+  }
+
+  return issues;
 }
 
 function hellPassabilityIsMirrored(level: DungeonLevel): boolean {
@@ -222,6 +285,15 @@ function poolRect(pool: { position: GridPoint; size: { width: number; height: nu
     y: pool.position.y,
     width: pool.size.width,
     height: pool.size.height,
+  };
+}
+
+function objectRect(object: { position: GridPoint; size: { width: number; height: number } }): GridRect {
+  return {
+    x: object.position.x,
+    y: object.position.y,
+    width: object.size.width,
+    height: object.size.height,
   };
 }
 

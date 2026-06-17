@@ -24,6 +24,7 @@ import {
   swapRect,
   trailingSideRoomProbe,
 } from './shared';
+import { cathedralObjectPresetProfile, placeCathedralObjectPresets } from './cathedral-object-presets';
 
 const CATHEDRAL_REGENERATION_LIMIT = 256;
 const SIDE_ROOM_ATTEMPTS = 20;
@@ -70,6 +71,8 @@ export function generateCathedralLevel(request: DungeonGenerationRequest, seed: 
 
   const rooms = layout.rooms.map((room) => room.rect);
   const doors = inferDoorCandidates(tiles);
+  const zones = buildZones(request, rooms, tiles);
+  const objectPlacements = placeCathedralObjectPresets(rng, tiles, protectedFootprints, zones, request.includeObjects);
   const generation: CathedralGenerationMetadata = {
     familyId: 'Cathedral',
     generatorKind: 'chamber-recursive',
@@ -84,6 +87,7 @@ export function generateCathedralLevel(request: DungeonGenerationRequest, seed: 
     hallMask: layout.hallMask,
     pillarPositions,
     minisetPlacements,
+    objectPresetProfile: cathedralObjectPresetProfile(request.includeObjects),
   };
 
   return {
@@ -97,7 +101,8 @@ export function generateCathedralLevel(request: DungeonGenerationRequest, seed: 
     rooms,
     doors,
     stairs: { up: up.point, down: down.point },
-    zones: buildZones(request, rooms, tiles),
+    zones,
+    objects: objectPlacements,
     generation,
   };
 }
