@@ -22,11 +22,64 @@ export interface DungeonZone {
   rect: GridRect;
 }
 
+export interface DungeonGridContract {
+  baseGrid: {
+    width: 40;
+    height: 40;
+  };
+  expandedGrid: {
+    width: 112;
+    height: 112;
+    padding: 16;
+    scale: 2;
+  };
+}
+
+export interface DungeonMinisetPlacement {
+  id: 'STAIRSUP' | 'STAIRSDOWN' | 'LAMPS' | 'PWATERIN';
+  role: 'stair' | 'decoration' | 'portal';
+  position: GridPoint;
+  size: {
+    width: number;
+    height: number;
+  };
+  tries: number;
+}
+
+export interface CathedralGenerationMetadata {
+  familyId: 'Cathedral';
+  generatorKind: 'chamber-recursive';
+  attemptCount: number;
+  attemptSeed: number;
+  areaThreshold: number;
+  maskTileCount: number;
+  verticalLayout: boolean;
+  chamberFlags: {
+    chamber1: boolean;
+    chamber2: boolean;
+    chamber3: boolean;
+  };
+  chamberInteriors: readonly GridRect[];
+  sideRooms: readonly GridRect[];
+  hallMask: GridRect;
+  pillarPositions: readonly GridPoint[];
+  minisetPlacements: readonly DungeonMinisetPlacement[];
+}
+
+export interface PreviewGenerationMetadata {
+  familyId: Exclude<DungeonType, 'Cathedral'>;
+  generatorKind: 'preview-rooms';
+  attemptCount: number;
+}
+
+export type DungeonGenerationMetadata = CathedralGenerationMetadata | PreviewGenerationMetadata;
+
 export interface DungeonLevel {
   dungeonType: DungeonType;
   levelNumber: number;
   width: number;
   height: number;
+  gridContract: DungeonGridContract;
   seed: number;
   tiles: TileKind[][];
   rooms: GridRect[];
@@ -36,6 +89,7 @@ export interface DungeonLevel {
     down: GridPoint;
   };
   zones: DungeonZone[];
+  generation: DungeonGenerationMetadata;
   checksum: string;
 }
 
@@ -62,6 +116,9 @@ export interface DungeonValidationReport {
     roomCount: number;
     doorCount: number;
     zoneCount: number;
+    maskTileCount?: number;
+    areaThreshold?: number;
+    minisetCount?: number;
   };
 }
 

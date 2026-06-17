@@ -7,6 +7,7 @@ import {
   type DungeonType,
   type SeedMode,
 } from '../../domain/world/dungeon-generator';
+import { createDungeonComparisonSnapshot, type DungeonComparisonSnapshot } from '../../domain/world/dungeon-comparison';
 import { DungeonDebugRenderer, type DebugOverlayOptions, type DungeonRenderSnapshot } from '../../presentation/dev/dungeon-debug-overlay';
 import { ISO_TILE_FOOTPRINT, isoGridBounds, toIso, type IsoBounds } from '../../presentation/dev/isometric-projection';
 import { requestFromLocation } from '../../runtime/route';
@@ -116,6 +117,7 @@ interface DungeonLabDebugSnapshot {
     expectedTileCount: number;
   };
   validationOk: boolean;
+  comparison: DungeonComparisonSnapshot;
   render: DungeonRenderSnapshot;
   camera: DungeonCameraSnapshot;
   floorPlane: {
@@ -180,6 +182,7 @@ function publishLabDebugSnapshot(
       expectedTileCount: result.level.width * result.level.height,
     },
     validationOk: result.validation.ok,
+    comparison: createDungeonComparisonSnapshot(result),
     render,
     camera,
     floorPlane: {
@@ -302,6 +305,7 @@ function createControls(onGenerate: (request: DungeonGenerationRequest, options:
       seed: latestResult.seed,
       checksum: latestResult.level.checksum,
       validation: latestResult.validation,
+      comparison: createDungeonComparisonSnapshot(latestResult),
     };
     void copyText(JSON.stringify(payload, null, 2));
   }
@@ -357,7 +361,10 @@ function statusText(result: DungeonGenerationResult): string {
     ? 'No validation issues.'
     : result.validation.issues.map((issue) => `${issue.severity.toUpperCase()} ${issue.rule}: ${issue.message}`).join('\n');
   const state = result.validation.ok ? 'PASS' : 'FAIL';
-  return `${state}\nseed=${result.seed}\nchecksum=${result.level.checksum}\nrooms=${result.validation.metrics.roomCount} doors=${result.validation.metrics.doorCount}\npassable=${result.validation.metrics.passableTileCount} reachable=${result.validation.metrics.reachableTileCount}\n\n${issues}`;
+  const mask = result.validation.metrics.maskTileCount === undefined
+    ? ''
+    : `\nmask=${result.validation.metrics.maskTileCount}/${result.validation.metrics.areaThreshold} minisets=${result.validation.metrics.minisetCount}`;
+  return `${state}\nseed=${result.seed}\nchecksum=${result.level.checksum}\nrooms=${result.validation.metrics.roomCount} doors=${result.validation.metrics.doorCount}\npassable=${result.validation.metrics.passableTileCount} reachable=${result.validation.metrics.reachableTileCount}${mask}\n\n${issues}`;
 }
 
 function required<T extends Element>(selector: string): T {

@@ -1,7 +1,7 @@
 import { hashStringToUint32 } from '../../core/hash';
 import type { DungeonGenerationRequest, DungeonType, SeedMode } from './dungeon-types';
 
-export const DUNGEON_GENERATOR_VERSION = 'cathedral-lab-v1';
+export const DUNGEON_GENERATOR_VERSION = 'cathedral-lab-v2';
 export const DEFAULT_RESOURCE_PACK_ID = 'cathedral-lab-placeholder';
 
 export function createGenerationRequest(input: Partial<DungeonGenerationRequest> = {}): DungeonGenerationRequest {
@@ -24,6 +24,11 @@ export function createGenerationRequest(input: Partial<DungeonGenerationRequest>
 }
 
 export function resolveDungeonSeed(request: DungeonGenerationRequest): number {
+  const numericSeed = parseUint32Seed(request.seedText);
+  if (numericSeed !== undefined) {
+    return numericSeed;
+  }
+
   const seedSource = `${request.generatorVersion}:${request.dungeonType}:${request.levelNumber}:${request.seedMode}:${request.seedText}`;
   return hashStringToUint32(seedSource);
 }
@@ -53,4 +58,15 @@ function defaultLevelNumber(dungeonType: DungeonType): number {
     case 'Cathedral':
       return 1;
   }
+}
+
+function parseUint32Seed(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (/^0x[0-9a-f]+$/i.test(trimmed)) {
+    return Number.parseInt(trimmed.slice(2), 16) >>> 0;
+  }
+  if (/^\d+$/.test(trimmed)) {
+    return Number.parseInt(trimmed, 10) >>> 0;
+  }
+  return undefined;
 }

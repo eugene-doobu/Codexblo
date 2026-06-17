@@ -3,16 +3,15 @@ export class GameRng {
 
   constructor(seed: number) {
     this.state = seed >>> 0;
-    if (this.state === 0) {
-      this.state = 0x6d2b79f5;
-    }
+  }
+
+  getState(): number {
+    return this.state >>> 0;
   }
 
   nextUint32(): number {
-    let next = (this.state += 0x6d2b79f5);
-    next = Math.imul(next ^ (next >>> 15), next | 1);
-    next ^= next + Math.imul(next ^ (next >>> 7), next | 61);
-    return (next ^ (next >>> 14)) >>> 0;
+    this.state = (Math.imul(this.state, 0x015a4e35) + 1) >>> 0;
+    return this.state;
   }
 
   nextFloat(): number {
@@ -20,6 +19,29 @@ export class GameRng {
   }
 
   integer(minInclusive: number, maxInclusive: number): number {
-    return Math.floor(this.nextFloat() * (maxInclusive - minInclusive + 1)) + minInclusive;
+    return this.generateRnd(maxInclusive - minInclusive + 1) + minInclusive;
+  }
+
+  generateRnd(boundExclusive: number): number {
+    if (boundExclusive <= 0) {
+      return 0;
+    }
+    const value = this.advanceRndSeed();
+    if (boundExclusive <= 0x7fff) {
+      return Math.floor(value / 0x10000) % boundExclusive;
+    }
+    return value % boundExclusive;
+  }
+
+  flipCoin(frequency = 2): boolean {
+    return this.generateRnd(frequency) === 0;
+  }
+
+  private advanceRndSeed(): number {
+    const signed = this.nextUint32() | 0;
+    if (signed === -2147483648) {
+      return 2147483648;
+    }
+    return Math.abs(signed);
   }
 }

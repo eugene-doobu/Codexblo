@@ -1,14 +1,18 @@
 export { generateDungeon, isPassable } from './cathedral-generator';
 export type {
+  CathedralGenerationMetadata,
   DungeonConnectivityGraph,
   DungeonGenerationRequest,
   DungeonGenerationResult,
+  DungeonGridContract,
   DungeonLevel,
+  DungeonMinisetPlacement,
   DungeonResourceBindingReport,
   DungeonType,
   DungeonValidationIssue,
   DungeonValidationReport,
   DungeonZone,
+  PreviewGenerationMetadata,
   SeedMode,
   TileKind,
 } from './dungeon-types';
