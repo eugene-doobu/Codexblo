@@ -32,4 +32,69 @@ describe('Cathedral generated resources', () => {
       expect(existsSync(assetPath)).toBe(true);
     }
   });
+
+  it('renders wall art as a raised block above the floor footprint', () => {
+    const publicRoot = resolve(process.cwd(), 'public');
+    const wallPath = resolve(publicRoot, TILE_ASSET_PATHS.wall.replace(/^\//, ''));
+    const wallSvg = readFileSync(wallPath, 'utf8');
+    const topPath = pathDataForLayer(wallSvg, 'wall-top');
+    const topPoints = pointsFromPath(topPath);
+
+    expect(wallSvg).toContain('data-layer="wall-footprint"');
+    expect(wallSvg.indexOf('data-layer="wall-top"')).toBeGreaterThan(wallSvg.indexOf('data-layer="wall-left-face"'));
+    expect(wallSvg.indexOf('data-layer="wall-top"')).toBeGreaterThan(wallSvg.indexOf('data-layer="wall-right-face"'));
+    expect(Math.min(...topPoints.map((point) => point.y))).toBeLessThan(24);
+    expect(Math.max(...topPoints.map((point) => point.y))).toBeLessThan(42);
+  });
+
+  it.each([
+    ['door', 'door-fill'],
+    ['stairUp', 'stair-up-fill'],
+    ['stairDown', 'stair-down-fill'],
+  ] satisfies [TileKind, string][])('fills the tile footprint for %s object art', (tileKind, layer) => {
+    const publicRoot = resolve(process.cwd(), 'public');
+    const assetPath = resolve(publicRoot, TILE_ASSET_PATHS[tileKind].replace(/^\//, ''));
+    const svg = readFileSync(assetPath, 'utf8');
+    const objectPoints = pointsFromPath(pathDataForLayer(svg, layer));
+    const bounds = boundsForPoints(objectPoints);
+
+    expect(bounds.minX).toBeLessThanOrEqual(8);
+    expect(bounds.maxX).toBeGreaterThanOrEqual(64);
+    expect(bounds.minY).toBeLessThanOrEqual(8);
+    expect(bounds.maxY).toBeGreaterThanOrEqual(40);
+  });
+
+  it('renders doors as full-tile panels instead of small marker icons', () => {
+    const publicRoot = resolve(process.cwd(), 'public');
+    const doorPath = resolve(publicRoot, TILE_ASSET_PATHS.door.replace(/^\//, ''));
+    const doorSvg = readFileSync(doorPath, 'utf8');
+
+    expect(doorSvg).toContain('data-layer="door-fill"');
+    expect(doorSvg).not.toContain('<circle');
+    expect(doorSvg).not.toContain('#c9a35b');
+  });
 });
+
+function pathDataForLayer(svg: string, layer: string): string {
+  const match = new RegExp(`data-layer="${layer}" d="([^"]+)"`).exec(svg);
+  if (!match) {
+    throw new Error(`Missing SVG path layer: ${layer}`);
+  }
+  return match[1];
+}
+
+function pointsFromPath(path: string): { x: number; y: number }[] {
+  return [...path.matchAll(/[ML] (-?[\d.]+) (-?[\d.]+)/g)].map((match) => ({
+    x: Number(match[1]),
+    y: Number(match[2]),
+  }));
+}
+
+function boundsForPoints(points: { x: number; y: number }[]): { minX: number; maxX: number; minY: number; maxY: number } {
+  return {
+    minX: Math.min(...points.map((point) => point.x)),
+    maxX: Math.max(...points.map((point) => point.x)),
+    minY: Math.min(...points.map((point) => point.y)),
+    maxY: Math.max(...points.map((point) => point.y)),
+  };
+}

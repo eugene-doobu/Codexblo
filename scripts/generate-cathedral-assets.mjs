@@ -40,33 +40,36 @@ const tileSpecs = {
     file: 'tile-wall.svg',
     title: 'Cathedral wall block',
     body: (p) => `
-      <path d="${diamond}" fill="${p[2]}" stroke="${p[1]}" stroke-width="2"/>
-      <path d="M 12 ${floorPlane.centerY} L ${floorPlane.centerX} ${floorPlane.centerY - 15} L ${width - 12} ${floorPlane.centerY} L ${width - 12} ${floorPlane.centerY + 14} L ${floorPlane.centerX} ${height - 3} L 12 ${floorPlane.centerY + 14} Z" fill="${p[0]}" stroke="${p[1]}" stroke-width="2"/>
-      <path d="M ${floorPlane.centerX} ${floorPlane.centerY - 15} V ${height - 3}" stroke="${p[1]}" stroke-width="1" opacity="0.7"/>`,
+      <path data-layer="wall-footprint" d="${diamond}" fill="${p[2]}" stroke="${p[1]}" stroke-width="2"/>
+      <path data-layer="wall-left-face" d="M ${floorPlane.inset} ${floorPlane.centerY} L 12 16 L ${floorPlane.centerX} 28 L ${floorPlane.centerX} ${floorPlane.centerY + floorPlane.halfHeight} Z" fill="${p[0]}" stroke="${p[1]}" stroke-width="2" opacity="0.92"/>
+      <path data-layer="wall-right-face" d="M 60 16 L ${width - floorPlane.inset} ${floorPlane.centerY} L ${floorPlane.centerX} ${floorPlane.centerY + floorPlane.halfHeight} L ${floorPlane.centerX} 28 Z" fill="${p[0]}" stroke="${p[1]}" stroke-width="2"/>
+      <path data-layer="wall-top" d="M ${floorPlane.centerX} 4 L 60 16 L ${floorPlane.centerX} 28 L 12 16 Z" fill="${p[2]}" stroke="${p[1]}" stroke-width="2"/>
+      <path data-layer="wall-center-ridge" d="M ${floorPlane.centerX} 4 V ${floorPlane.centerY + floorPlane.halfHeight}" stroke="${p[1]}" stroke-width="1" opacity="0.65"/>`,
   },
   door: {
     file: 'tile-door.svg',
     title: 'Cathedral door tile',
     body: (p) => `
-      <path d="${diamond}" fill="#292b33" stroke="#494d5a" stroke-width="2"/>
-      <path d="M 24 ${floorPlane.centerY - 9} H ${width - 24} V ${floorPlane.centerY + 13} H 24 Z" fill="${p[0]}" stroke="${p[1]}" stroke-width="3"/>
-      <circle cx="${width - 28}" cy="${floorPlane.centerY + 4}" r="3" fill="#c9a35b"/>`,
+      <path data-layer="door-footprint" d="${diamond}" fill="#292b33" stroke="#494d5a" stroke-width="2"/>
+      <path data-layer="door-fill" d="M ${floorPlane.centerX} 8 L 64 ${floorPlane.centerY} L ${floorPlane.centerX} 40 L 8 ${floorPlane.centerY} Z" fill="${p[0]}" stroke="${p[1]}" stroke-width="3"/>
+      <path data-layer="door-grain" d="M 18 ${floorPlane.centerY} L ${floorPlane.centerX} 14 L 54 ${floorPlane.centerY} M 18 ${floorPlane.centerY} L ${floorPlane.centerX} 34 L 54 ${floorPlane.centerY}" fill="none" stroke="${p[2]}" stroke-width="2" opacity="0.55"/>
+      <path data-layer="door-brace" d="M 24 18 L 48 30 M 48 18 L 24 30" stroke="${p[1]}" stroke-width="3" stroke-linecap="round" opacity="0.72"/>`,
   },
   stairUp: {
     file: 'tile-stair-up.svg',
     title: 'Cathedral stair up tile',
     body: (p) => `
-      <path d="${diamond}" fill="${p[0]}" stroke="${p[1]}" stroke-width="2"/>
-      <path d="M 22 ${floorPlane.centerY + 8} H 50 M 26 ${floorPlane.centerY + 2} H 46 M 30 ${floorPlane.centerY - 4} H 42" stroke="${p[1]}" stroke-width="4" stroke-linecap="round"/>
-      <path d="M 36 ${floorPlane.centerY - 13} L 45 ${floorPlane.centerY - 2} H 27 Z" fill="${p[2]}" opacity="0.75"/>`,
+      <path data-layer="stair-up-fill" d="M ${floorPlane.centerX} 8 L 64 ${floorPlane.centerY} L ${floorPlane.centerX} 40 L 8 ${floorPlane.centerY} Z" fill="${p[0]}" stroke="${p[1]}" stroke-width="2"/>
+      <path data-layer="stair-up-treads" d="M 16 28 L 36 18 L 56 28 M 20 32 L 36 24 L 52 32 M 24 36 L 36 30 L 48 36" fill="none" stroke="${p[1]}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path data-layer="stair-up-arrow" d="M ${floorPlane.centerX} 10 L 48 24 L 24 24 Z" fill="${p[2]}" opacity="0.78"/>`,
   },
   stairDown: {
     file: 'tile-stair-down.svg',
     title: 'Cathedral stair down tile',
     body: (p) => `
-      <path d="${diamond}" fill="${p[0]}" stroke="${p[1]}" stroke-width="2"/>
-      <path d="M 20 ${floorPlane.centerY - 6} H 52 M 24 ${floorPlane.centerY} H 48 M 28 ${floorPlane.centerY + 6} H 44" stroke="${p[1]}" stroke-width="4" stroke-linecap="round"/>
-      <path d="M 36 ${floorPlane.centerY + 14} L 45 ${floorPlane.centerY + 3} H 27 Z" fill="${p[2]}" opacity="0.85"/>`,
+      <path data-layer="stair-down-fill" d="M ${floorPlane.centerX} 8 L 64 ${floorPlane.centerY} L ${floorPlane.centerX} 40 L 8 ${floorPlane.centerY} Z" fill="${p[0]}" stroke="${p[1]}" stroke-width="2"/>
+      <path data-layer="stair-down-treads" d="M 16 20 L 36 30 L 56 20 M 20 16 L 36 24 L 52 16 M 24 12 L 36 18 L 48 12" fill="none" stroke="${p[1]}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path data-layer="stair-down-arrow" d="M ${floorPlane.centerX} 40 L 48 26 L 24 26 Z" fill="${p[2]}" opacity="0.85"/>`,
   },
   void: {
     file: 'tile-void.svg',

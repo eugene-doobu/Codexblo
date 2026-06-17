@@ -2,7 +2,7 @@
     <title>Cathedral stair up tile</title>
     <rect width="72" height="48" fill="none"/>
     
-      <path d="M 36 6 L 70 24 L 36 42 L 2 24 Z" fill="#363947" stroke="#c0b38b" stroke-width="2"/>
-      <path d="M 22 32 H 50 M 26 26 H 46 M 30 20 H 42" stroke="#c0b38b" stroke-width="4" stroke-linecap="round"/>
-      <path d="M 36 11 L 45 22 H 27 Z" fill="#22242c" opacity="0.75"/>
+      <path data-layer="stair-up-fill" d="M 36 8 L 64 24 L 36 40 L 8 24 Z" fill="#363947" stroke="#c0b38b" stroke-width="2"/>
+      <path data-layer="stair-up-treads" d="M 16 28 L 36 18 L 56 28 M 20 32 L 36 24 L 52 32 M 24 36 L 36 30 L 48 36" fill="none" stroke="#c0b38b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path data-layer="stair-up-arrow" d="M 36 10 L 48 24 L 24 24 Z" fill="#22242c" opacity="0.78"/>
   </svg>
