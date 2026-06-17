@@ -3,9 +3,19 @@ import { join, relative, resolve, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { TileKind } from '../src/domain/world/dungeon-generator';
 import { REQUIRED_TILE_SEMANTICS } from '../src/domain/world/tile-semantics';
-import { TILE_ASSET_ENTRIES, TILE_ASSET_KEYS, TILE_ASSET_PATHS, type AssetManifestEntry } from '../src/presentation/bindings/cathedral-assets';
+import {
+  resourcePackIdForDungeonType,
+  TILE_ASSET_ENTRIES,
+  TILE_ASSET_KEYS,
+  TILE_ASSET_KEYS_BY_DUNGEON,
+  TILE_ASSET_PATHS,
+  TILE_ASSET_PATHS_BY_DUNGEON,
+  tileAssetKeysForResourcePack,
+  tileAssetPathsForResourcePack,
+  type AssetManifestEntry,
+} from '../src/presentation/bindings/dungeon-assets';
 
-describe('Cathedral generated resources', () => {
+describe('Dungeon generated resources', () => {
   it('uses one generated registry for manifest files and runtime preload mappings', () => {
     const publicRoot = resolve(process.cwd(), 'public');
     const manifestPath = join(publicRoot, 'assets/asset-manifest.json');
@@ -29,6 +39,33 @@ describe('Cathedral generated resources', () => {
       const relativeAssetPath = relative(publicRoot, assetPath);
 
       expect(relativeAssetPath !== '..' && !relativeAssetPath.startsWith(`..${sep}`)).toBe(true);
+      expect(existsSync(assetPath)).toBe(true);
+    }
+  });
+
+  it('includes a separate Catacombs resource pack and runtime asset mapping', () => {
+    const publicRoot = resolve(process.cwd(), 'public');
+    const manifestPath = join(publicRoot, 'assets/asset-manifest.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+      resourcePacks: { resourcePackId: string; dungeonTypes: string[]; assets: AssetManifestEntry[] }[];
+    };
+    const pack = manifest.resourcePacks.find((resourcePack) => resourcePack.resourcePackId === 'catacombs-lab-placeholder');
+
+    expect(pack).toBeDefined();
+    expect(pack!.dungeonTypes).toContain('Catacombs');
+    expect(pack!.assets).toHaveLength(REQUIRED_TILE_SEMANTICS.length);
+    expect(resourcePackIdForDungeonType('Catacombs')).toBe('catacombs-lab-placeholder');
+    expect(tileAssetKeysForResourcePack('catacombs-lab-placeholder').floor).toBe('catacombs.floor');
+    expect(tileAssetPathsForResourcePack('catacombs-lab-placeholder').floor).toBe('/assets/catacombs/tile-floor.svg');
+    expect(TILE_ASSET_KEYS_BY_DUNGEON.Catacombs.floor).toBe('catacombs.floor');
+    expect(TILE_ASSET_KEYS_BY_DUNGEON.Catacombs.floor).not.toBe(TILE_ASSET_KEYS_BY_DUNGEON.Cathedral.floor);
+
+    for (const semantic of REQUIRED_TILE_SEMANTICS) {
+      const tileKind = semantic.replace('tile.', '') as TileKind;
+      const path = TILE_ASSET_PATHS_BY_DUNGEON.Catacombs[tileKind];
+      const assetPath = resolve(publicRoot, path.replace(/^\//, ''));
+
+      expect(path.startsWith('/assets/catacombs/')).toBe(true);
       expect(existsSync(assetPath)).toBe(true);
     }
   });

@@ -228,7 +228,7 @@ function createControls(onGenerate: (request: DungeonGenerationRequest, options:
         <label for="dungeon-type">Dungeon type</label>
         <select id="dungeon-type">
           <option value="Cathedral">Cathedral</option>
-          <option value="Catacombs">Catacombs preview</option>
+          <option value="Catacombs">Catacombs</option>
           <option value="Caves">Caves preview</option>
           <option value="Hell">Hell preview</option>
         </select>
@@ -361,10 +361,16 @@ function statusText(result: DungeonGenerationResult): string {
     ? 'No validation issues.'
     : result.validation.issues.map((issue) => `${issue.severity.toUpperCase()} ${issue.rule}: ${issue.message}`).join('\n');
   const state = result.validation.ok ? 'PASS' : 'FAIL';
-  const mask = result.validation.metrics.maskTileCount === undefined
-    ? ''
-    : `\nmask=${result.validation.metrics.maskTileCount}/${result.validation.metrics.areaThreshold} minisets=${result.validation.metrics.minisetCount}`;
-  return `${state}\nseed=${result.seed}\nchecksum=${result.level.checksum}\nrooms=${result.validation.metrics.roomCount} doors=${result.validation.metrics.doorCount}\npassable=${result.validation.metrics.passableTileCount} reachable=${result.validation.metrics.reachableTileCount}${mask}\n\n${issues}`;
+  const metrics = [
+    result.validation.metrics.maskTileCount === undefined
+      ? undefined
+      : `mask=${result.validation.metrics.maskTileCount}/${result.validation.metrics.areaThreshold}`,
+    result.validation.metrics.minisetCount === undefined
+      ? undefined
+      : `minisets=${result.validation.metrics.minisetCount}`,
+  ].filter(Boolean);
+  const extraMetrics = metrics.length === 0 ? '' : `\n${metrics.join(' ')}`;
+  return `${state}\nseed=${result.seed}\nchecksum=${result.level.checksum}\nrooms=${result.validation.metrics.roomCount} doors=${result.validation.metrics.doorCount}\npassable=${result.validation.metrics.passableTileCount} reachable=${result.validation.metrics.reachableTileCount}${extraMetrics}\n\n${issues}`;
 }
 
 function required<T extends Element>(selector: string): T {

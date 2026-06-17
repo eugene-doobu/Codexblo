@@ -5,6 +5,15 @@ import { readFileSync } from 'node:fs';
 // generate a native/reference snapshot; export that snapshot separately and
 // pass both JSON files to this dev-only command.
 
+const TILE_SYMBOLS = {
+  void: ' ',
+  floor: '.',
+  wall: '#',
+  door: '+',
+  stairUp: '<',
+  stairDown: '>',
+};
+
 const [candidatePath, referencePath] = process.argv.slice(2);
 if (!candidatePath || !referencePath) {
   console.error('Usage: npm run compare:dungeon -- <candidate.json> <reference.json>');
@@ -49,12 +58,19 @@ function normalize(input) {
   if (!Array.isArray(rows)) {
     throw new Error('Snapshot must contain tileRows, rows, or tiles.');
   }
-  const normalizedRows = rows.map((row) => Array.isArray(row) ? row.join('') : String(row));
+  const normalizedRows = rows.map(normalizeRow);
   return {
     width: Number(grid.width ?? normalizedRows[0]?.length ?? 0),
     height: Number(grid.height ?? normalizedRows.length),
     rows: normalizedRows,
   };
+}
+
+function normalizeRow(row) {
+  if (!Array.isArray(row)) {
+    return String(row);
+  }
+  return row.map((cell) => TILE_SYMBOLS[cell] ?? String(cell)).join('');
 }
 
 function readJson(path) {

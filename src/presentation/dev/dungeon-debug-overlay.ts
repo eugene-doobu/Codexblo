@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import type { GridPoint, GridRect } from '../../core/grid';
 import type { DungeonGenerationResult, TileKind } from '../../domain/world/dungeon-generator';
 import { isPassable } from '../../domain/world/dungeon-generator';
-import { TILE_ASSET_KEYS } from '../bindings/cathedral-assets';
+import { tileAssetKeysForResourcePack } from '../bindings/dungeon-assets';
 import { ISO_TILE_FOOTPRINT, type GridSize, toIso } from './isometric-projection';
 
 export interface DebugOverlayOptions {
@@ -37,6 +37,7 @@ export class DungeonDebugRenderer {
     this.clear();
     const { level } = result;
     const gridSize = { width: level.width, height: level.height };
+    const tileAssetKeys = tileAssetKeysForResourcePack(result.request.resourcePackId);
     const renderedTiles: RenderedTileSnapshot[] = [];
 
     for (let y = 0; y < level.height; y += 1) {
@@ -46,7 +47,7 @@ export class DungeonDebugRenderer {
           continue;
         }
         const screen = toIso({ x, y }, gridSize);
-        const sprite = this.scene.add.image(screen.x, screen.y, TILE_ASSET_KEYS[tile]);
+        const sprite = this.scene.add.image(screen.x, screen.y, tileAssetKeys[tile]);
         sprite.setOrigin(0.5, 0.5);
         const depth = screen.y + depthBias(tile);
         sprite.setDepth(depth);

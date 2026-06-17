@@ -2,7 +2,7 @@
     <title>Cathedral door tile</title>
     <rect width="72" height="48" fill="none"/>
     
-      <path data-layer="door-footprint" d="M 36 6 L 70 24 L 36 42 L 2 24 Z" fill="#292b33" stroke="#494d5a" stroke-width="2"/>
+      <path data-layer="door-footprint" d="M 36 6 L 70 24 L 36 42 L 2 24 Z" fill="#29221d" stroke="#514235" stroke-width="2"/>
       <path data-layer="door-fill" d="M 36 8 L 64 24 L 36 40 L 8 24 Z" fill="#5a321d" stroke="#b98245" stroke-width="3"/>
       <path data-layer="door-grain" d="M 18 24 L 36 14 L 54 24 M 18 24 L 36 34 L 54 24" fill="none" stroke="#24130a" stroke-width="2" opacity="0.55"/>
       <path data-layer="door-brace" d="M 24 18 L 48 30 M 48 18 L 24 30" stroke="#b98245" stroke-width="3" stroke-linecap="round" opacity="0.72"/>

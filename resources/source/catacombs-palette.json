@@ -1,0 +1,12 @@
+{
+  "theme": "catacombs-lab-placeholder",
+  "tileSize": { "width": 72, "height": 48 },
+  "palette": {
+    "floor": ["#3a2b1d", "#5f4630", "#261b13"],
+    "wall": ["#2b211b", "#8c7354", "#4d3a2a"],
+    "door": ["#4d2417", "#b56d3c", "#1f0e09"],
+    "stairUp": ["#3f3024", "#c8aa73", "#211812"],
+    "stairDown": ["#241812", "#9b7a52", "#110b08"],
+    "void": ["#070504", "#1a100c", "#000000"]
+  }
+}

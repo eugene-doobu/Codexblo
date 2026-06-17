@@ -30,6 +30,9 @@ export interface DungeonComparisonSnapshot {
     generatorKind: string;
     areaThreshold?: number;
     maskTileCount?: number;
+    roomCount?: number;
+    minisetCount?: number;
+    roomNodeCapacity?: number;
   };
 }
 
@@ -76,6 +79,11 @@ export function createDungeonComparisonSnapshot(result: DungeonGenerationResult)
       generatorKind: result.level.generation.generatorKind,
       areaThreshold: result.level.generation.familyId === 'Cathedral' ? result.level.generation.areaThreshold : undefined,
       maskTileCount: result.level.generation.familyId === 'Cathedral' ? result.level.generation.maskTileCount : undefined,
+      roomCount: result.level.generation.familyId === 'Catacombs' ? result.level.generation.rooms.length : undefined,
+      minisetCount: result.level.generation.familyId === 'Cathedral' || result.level.generation.familyId === 'Catacombs'
+        ? result.level.generation.minisetPlacements.length
+        : undefined,
+      roomNodeCapacity: result.level.generation.familyId === 'Catacombs' ? result.level.generation.roomNodeCapacity : undefined,
     },
   };
 }

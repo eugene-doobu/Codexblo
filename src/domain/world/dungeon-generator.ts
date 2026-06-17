@@ -1,11 +1,16 @@
-export { generateDungeon, isPassable } from './cathedral-generator';
+export { generateDungeon, isPassable } from './dungeon-generation-engine';
 export type {
+  CatacombsForcedRoomProfile,
+  CatacombsGenerationMetadata,
+  CatacombsHallDirection,
+  CatacombsHallMetadata,
   CathedralGenerationMetadata,
   DungeonConnectivityGraph,
   DungeonGenerationRequest,
   DungeonGenerationResult,
   DungeonGridContract,
   DungeonLevel,
+  DungeonMinisetId,
   DungeonMinisetPlacement,
   DungeonResourceBindingReport,
   DungeonType,
@@ -19,6 +24,7 @@ export type {
 export {
   createGenerationRequest,
   DEFAULT_RESOURCE_PACK_ID,
+  DUNGEON_RESOURCE_PACK_IDS,
   DUNGEON_GENERATOR_VERSION,
   parseDungeonType,
   parseSeedMode,

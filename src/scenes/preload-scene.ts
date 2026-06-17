@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TILE_ASSET_ENTRIES } from '../presentation/bindings/cathedral-assets';
+import { TILE_ASSET_ENTRIES } from '../presentation/bindings/dungeon-assets';
 
 export class PreloadScene extends Phaser.Scene {
   constructor() {
@@ -7,6 +7,9 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   preload(): void {
+    // The dev lab preloads the small placeholder packs up front so switching
+    // dungeon type or resource pack is immediate; render-time lookup still
+    // uses the active request.resourcePackId.
     for (const asset of TILE_ASSET_ENTRIES) {
       this.load.image(asset.key, asset.path);
     }

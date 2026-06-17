@@ -3,6 +3,12 @@ import type { DungeonGenerationRequest, DungeonType, SeedMode } from './dungeon-
 
 export const DUNGEON_GENERATOR_VERSION = 'cathedral-lab-v2';
 export const DEFAULT_RESOURCE_PACK_ID = 'cathedral-lab-placeholder';
+export const DUNGEON_RESOURCE_PACK_IDS: Readonly<Record<DungeonType, string>> = {
+  Cathedral: DEFAULT_RESOURCE_PACK_ID,
+  Catacombs: 'catacombs-lab-placeholder',
+  Caves: DEFAULT_RESOURCE_PACK_ID,
+  Hell: DEFAULT_RESOURCE_PACK_ID,
+};
 
 export function createGenerationRequest(input: Partial<DungeonGenerationRequest> = {}): DungeonGenerationRequest {
   const dungeonType = input.dungeonType ?? 'Cathedral';
@@ -16,7 +22,7 @@ export function createGenerationRequest(input: Partial<DungeonGenerationRequest>
     seedMode,
     seedText,
     generatorVersion: input.generatorVersion ?? DUNGEON_GENERATOR_VERSION,
-    resourcePackId: input.resourcePackId ?? DEFAULT_RESOURCE_PACK_ID,
+    resourcePackId: input.resourcePackId ?? DUNGEON_RESOURCE_PACK_IDS[dungeonType],
     includeObjects: input.includeObjects ?? true,
     includeSpawnZones: input.includeSpawnZones ?? true,
     includeQuestLocks: input.includeQuestLocks ?? true,

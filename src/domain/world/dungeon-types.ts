@@ -35,8 +35,10 @@ export interface DungeonGridContract {
   };
 }
 
+export type DungeonMinisetId = 'STAIRSUP' | 'STAIRSDOWN' | 'LAMPS' | 'PWATERIN' | 'USTAIRS' | 'DSTAIRS' | 'WARPSTAIRS';
+
 export interface DungeonMinisetPlacement {
-  id: 'STAIRSUP' | 'STAIRSDOWN' | 'LAMPS' | 'PWATERIN';
+  id: DungeonMinisetId;
   role: 'stair' | 'decoration' | 'portal';
   position: GridPoint;
   size: {
@@ -66,13 +68,81 @@ export interface CathedralGenerationMetadata {
   minisetPlacements: readonly DungeonMinisetPlacement[];
 }
 
+export type CatacombsHallDirection = 'Up' | 'Right' | 'Down' | 'Left';
+
+export interface CatacombsHallMetadata {
+  from: GridPoint;
+  to: GridPoint;
+  direction: CatacombsHallDirection;
+  minusExtension: boolean;
+  plusExtension: boolean;
+}
+
+export interface CatacombsForcedRoomProfile {
+  id: 'BloodRoom' | 'BoneRoom' | 'BlindRoom';
+  levelNumber: number;
+  size: {
+    width: number;
+    height: number;
+  };
+  enabled: boolean;
+  actualRoom?: GridRect;
+}
+
+export interface CatacombsGenerationMetadata {
+  familyId: 'Catacombs';
+  generatorKind: 'bsp-rooms';
+  attemptCount: number;
+  attemptSeed: number;
+  roomNodeCapacity: 80;
+  roomNodeArrayCapacity: 81;
+  initialPartition: {
+    topLeft: GridPoint;
+    bottomRight: GridPoint;
+  };
+  randomRoomSize: {
+    min: 4;
+    maxExclusive: 10;
+    effectiveMaxInclusiveWhenAreaAtLeastTen: 9;
+  };
+  clampBounds: {
+    min: 1;
+    max: 38;
+  };
+  recursionStandoff: {
+    width: 2;
+    height: 2;
+  };
+  hallExtensionChance: {
+    minusPercent: 50;
+    plusPercent: 50;
+  };
+  hallSteering: {
+    horizontalMultiplier: 2;
+    horizontalMaxPercent: 30;
+    verticalMultiplier: 5;
+    verticalMaxPercent: 80;
+  };
+  themeRoom: {
+    minSize: 6;
+    maxSize: 10;
+    floorTile: 3;
+    frequency: 0;
+    randomizeSize: false;
+  };
+  forcedRoomProfile?: CatacombsForcedRoomProfile;
+  rooms: readonly GridRect[];
+  halls: readonly CatacombsHallMetadata[];
+  minisetPlacements: readonly DungeonMinisetPlacement[];
+}
+
 export interface PreviewGenerationMetadata {
-  familyId: Exclude<DungeonType, 'Cathedral'>;
+  familyId: Exclude<DungeonType, 'Cathedral' | 'Catacombs'>;
   generatorKind: 'preview-rooms';
   attemptCount: number;
 }
 
-export type DungeonGenerationMetadata = CathedralGenerationMetadata | PreviewGenerationMetadata;
+export type DungeonGenerationMetadata = CathedralGenerationMetadata | CatacombsGenerationMetadata | PreviewGenerationMetadata;
 
 export interface DungeonLevel {
   dungeonType: DungeonType;

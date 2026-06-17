@@ -9,7 +9,7 @@
     "dev:lan": "vite --host 0.0.0.0",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
-    "generate:assets": "node scripts/generate-cathedral-assets.mjs",
+    "generate:assets": "node scripts/generate-dungeon-assets.mjs",
     "compare:dungeon": "node scripts/compare-dungeon-snapshot.mjs",
     "check": "npm run generate:assets && npm test && npm run build"
   },
