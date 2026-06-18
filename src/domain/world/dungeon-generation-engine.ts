@@ -12,10 +12,12 @@ export { isPassable };
 export function generateDungeon(request: DungeonGenerationRequest): DungeonGenerationResult {
   const seed = resolveDungeonSeed(request);
   const partialLevel = generateLevelByType(request, seed);
+  const renderChecksum = partialLevel.renderTiles ? checksumJson(renderChecksumInput(partialLevel)) : undefined;
 
   const level: DungeonLevel = {
     ...partialLevel,
-    checksum: checksumJson(partialLevel),
+    ...(renderChecksum ? { renderChecksum } : {}),
+    checksum: checksumJson(gameplayChecksumInput(partialLevel)),
   };
   const graph = buildConnectivityGraph(level);
   const resourceBindings = validateResourceBindings(level);
@@ -35,4 +37,24 @@ function generateLevelByType(request: DungeonGenerationRequest, seed: number): O
     case 'Hell':
       return generateHellLevel(request, seed);
   }
+}
+
+function gameplayChecksumInput(level: Omit<DungeonLevel, 'checksum'>): unknown {
+  const { renderTiles: _renderTiles, renderChecksum: _renderChecksum, generation, ...logicalLevel } = level;
+  if (generation.familyId !== 'Cathedral') {
+    return { ...logicalLevel, generation };
+  }
+
+  const { tileization: _tileization, ...logicalGeneration } = generation;
+  return {
+    ...logicalLevel,
+    generation: logicalGeneration,
+  };
+}
+
+function renderChecksumInput(level: Omit<DungeonLevel, 'checksum'>): unknown {
+  return {
+    renderTiles: level.renderTiles,
+    tileization: level.generation.familyId === 'Cathedral' ? level.generation.tileization : undefined,
+  };
 }

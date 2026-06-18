@@ -1,6 +1,7 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { clampByte, createRasterCanvas, darken, downsample, encodePng, fill, hashNoise, hashString, hexToRgb, lighten, stroke } from './png-raster.mjs';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const bindingsDir = join(root, 'src/presentation/bindings');
@@ -10,6 +11,7 @@ const packSpecs = [
     keyPrefix: 'cathedral',
     label: 'Cathedral',
     dungeonTypes: ['Cathedral'],
+    includeStructureTiles: true,
     sourcePath: join(root, 'resources/source/cathedral-palette.json'),
     outDir: join(root, 'public/assets/cathedral'),
   },
@@ -39,6 +41,17 @@ const packSpecs = [
   },
 ];
 
+const staleStructureSvgFiles = [
+  'tile-vertical-wall.svg',
+  'tile-horizontal-wall.svg',
+  'tile-corner-wall.svg',
+  'tile-diagonal-wall.svg',
+  'tile-vertical-arch.svg',
+  'tile-horizontal-arch.svg',
+  'tile-pillar.svg',
+  'tile-dividing-wall.svg',
+];
+
 mkdirSync(join(root, 'resources/generated'), { recursive: true });
 mkdirSync(bindingsDir, { recursive: true });
 
@@ -63,23 +76,31 @@ console.log(`Generated ${manifest.assets.length} dungeon lab assets across ${pac
 function generatePackAssets(spec) {
   const source = JSON.parse(readFileSync(spec.sourcePath, 'utf8'));
   mkdirSync(spec.outDir, { recursive: true });
+  if (spec.includeStructureTiles === true) {
+    removeStaleStructureSvgAssets(spec.outDir);
+  }
 
   const { width, height } = source.tileSize;
   assertTileSize(width, height, spec.label);
-  const tileSpecs = createTileSpecs(width, height, spec.label);
+  const tileSpecs = createTileSpecs(width, height, spec.label, spec.includeStructureTiles === true);
   const assets = [];
 
   for (const [key, tileSpec] of Object.entries(tileSpecs)) {
-    const colors = source.palette[key];
-    assertPalette(key, colors, spec.label);
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${tileSpec.title}">
+    const paletteKey = tileSpec.paletteKey ?? key;
+    const colors = source.palette[paletteKey];
+    assertPalette(paletteKey, colors, spec.label);
+    const filePath = join(spec.outDir, tileSpec.file);
+    if (tileSpec.format === 'png') {
+      writeFileSync(filePath, tileSpec.body(colors));
+    } else {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${tileSpec.title}">
     <title>${tileSpec.title}</title>
     <rect width="${width}" height="${height}" fill="none"/>
     ${tileSpec.body(colors)}
   </svg>
 `;
-    const filePath = join(spec.outDir, tileSpec.file);
-    writeFileSync(filePath, svg, 'utf8');
+      writeFileSync(filePath, svg, 'utf8');
+    }
     assets.push({
       key: `${spec.keyPrefix}.${key}`,
       kind: 'image',
@@ -101,7 +122,7 @@ function generatePackAssets(spec) {
   };
 }
 
-function createTileSpecs(width, height, label) {
+function createTileSpecs(width, height, label, includeStructureTiles) {
   const floorPlane = {
     centerX: width / 2,
     centerY: height / 2,
@@ -117,14 +138,14 @@ function createTileSpecs(width, height, label) {
     'Z',
   ].join(' ');
 
-  return {
+  const specs = {
     floor: {
       file: 'tile-floor.svg',
       title: `${label} floor tile`,
       body: (p) => `
-      <path d="${diamond}" fill="${p[0]}" stroke="${p[1]}" stroke-width="2"/>
-      <path d="M 14 ${floorPlane.centerY} H ${width - 14}" stroke="${p[2]}" stroke-width="2" opacity="0.5"/>
-      <path d="M ${floorPlane.centerX} ${floorPlane.centerY - 12} V ${floorPlane.centerY + 12}" stroke="${p[2]}" stroke-width="1.5" opacity="0.38"/>`,
+      <path d="${diamond}" fill="${p[0]}" stroke="${p[1]}" stroke-width="1.2" opacity="0.78"/>
+      <path d="M 14 ${floorPlane.centerY} H ${width - 14}" stroke="${p[2]}" stroke-width="1.3" opacity="0.22"/>
+      <path d="M ${floorPlane.centerX} ${floorPlane.centerY - 12} V ${floorPlane.centerY + 12}" stroke="${p[2]}" stroke-width="1" opacity="0.16"/>`,
     },
     wall: {
       file: 'tile-wall.svg',
@@ -169,6 +190,252 @@ function createTileSpecs(width, height, label) {
       <path d="M 18 ${floorPlane.centerY - 6} L 54 ${floorPlane.centerY + 6} M 54 ${floorPlane.centerY - 6} L 18 ${floorPlane.centerY + 6}" stroke="${p[1]}" stroke-width="1" opacity="0.35"/>`,
     },
   };
+
+  if (!includeStructureTiles) {
+    return specs;
+  }
+
+  const structureSprite = (variant) => (p) => renderStructurePng(width, height, p, variant);
+
+  return {
+    ...specs,
+    cathedralVerticalWall: {
+      file: 'tile-vertical-wall.png',
+      format: 'png',
+      title: `${label} vertical wall tile`,
+      paletteKey: 'wall',
+      body: structureSprite('verticalWall'),
+    },
+    cathedralHorizontalWall: {
+      file: 'tile-horizontal-wall.png',
+      format: 'png',
+      title: `${label} horizontal wall tile`,
+      paletteKey: 'wall',
+      body: structureSprite('horizontalWall'),
+    },
+    cathedralCornerWall: {
+      file: 'tile-corner-wall.png',
+      format: 'png',
+      title: `${label} corner wall tile`,
+      paletteKey: 'wall',
+      body: structureSprite('cornerWall'),
+    },
+    cathedralDiagonalWall: {
+      file: 'tile-diagonal-wall.png',
+      format: 'png',
+      title: `${label} diagonal wall tile`,
+      paletteKey: 'wall',
+      body: structureSprite('diagonalWall'),
+    },
+    cathedralVerticalArch: {
+      file: 'tile-vertical-arch.png',
+      format: 'png',
+      title: `${label} vertical arch tile`,
+      paletteKey: 'wall',
+      body: structureSprite('verticalArch'),
+    },
+    cathedralHorizontalArch: {
+      file: 'tile-horizontal-arch.png',
+      format: 'png',
+      title: `${label} horizontal arch tile`,
+      paletteKey: 'wall',
+      body: structureSprite('horizontalArch'),
+    },
+    cathedralPillar: {
+      file: 'tile-pillar.png',
+      format: 'png',
+      title: `${label} pillar tile`,
+      paletteKey: 'wall',
+      body: structureSprite('pillar'),
+    },
+    cathedralDividingWall: {
+      file: 'tile-dividing-wall.png',
+      format: 'png',
+      title: `${label} dividing wall tile`,
+      paletteKey: 'wall',
+      body: structureSprite('dividingWall'),
+    },
+  };
+}
+
+function removeStaleStructureSvgAssets(outDir) {
+  for (const file of staleStructureSvgFiles) {
+    const filePath = join(outDir, file);
+    if (existsSync(filePath)) {
+      rmSync(filePath);
+    }
+  }
+}
+
+function renderStructurePng(width, height, palette, variant) {
+  const canvas = createRasterCanvas(width, height, 4);
+  const colors = structureColors(palette);
+  drawStructureBase(canvas, colors);
+
+  switch (variant) {
+    case 'verticalWall':
+      drawMasonrySlab(canvas, [
+        [20, 39],
+        [21, 10],
+        [36, 2],
+        [51, 10],
+        [52, 39],
+        [36, 47],
+      ], colors, 7);
+      stroke(canvas, [[36, 4], [36, 45]], colors.highlight, 2.1, 0.72);
+      stroke(canvas, [[24, 18], [48, 18], [48, 19], [24, 19]], colors.joint, 1.2, 0.48);
+      stroke(canvas, [[23, 28], [49, 28], [49, 29], [23, 29]], colors.joint, 1.2, 0.44);
+      break;
+    case 'horizontalWall':
+      drawMasonrySlab(canvas, [
+        [2, 24],
+        [36, 4],
+        [70, 24],
+        [60, 35],
+        [36, 44],
+        [12, 35],
+      ], colors, 13);
+      stroke(canvas, [[6, 24], [36, 7], [66, 24]], colors.highlight, 2.4, 0.68);
+      stroke(canvas, [[14, 31], [58, 31]], colors.joint, 1.2, 0.46);
+      stroke(canvas, [[22, 36], [50, 36]], colors.joint, 1.2, 0.42);
+      break;
+    case 'cornerWall':
+      drawMasonrySlab(canvas, [[3, 24], [36, 4], [40, 27], [14, 42], [7, 33]], colors, 19);
+      drawMasonrySlab(canvas, [[36, 4], [69, 24], [64, 33], [40, 27]], colors, 23);
+      fill(canvas, [[3, 24], [36, 4], [69, 24], [40, 27]], colors.cap, 0.96);
+      stroke(canvas, [[4, 24], [36, 5], [68, 24]], colors.highlight, 2.2, 0.62);
+      stroke(canvas, [[36, 7], [39, 27]], colors.joint, 1.1, 0.5);
+      break;
+    case 'diagonalWall':
+      drawMasonrySlab(canvas, [[10, 18], [28, 7], [64, 31], [47, 43]], colors, 29);
+      stroke(canvas, [[17, 18], [54, 38]], colors.highlight, 2.5, 0.62);
+      stroke(canvas, [[28, 17], [37, 22], [37, 23], [28, 18]], colors.joint, 1.1, 0.5);
+      stroke(canvas, [[38, 25], [48, 31]], colors.joint, 1.1, 0.5);
+      break;
+    case 'verticalArch':
+      fill(canvas, [
+        [18, 41],
+        [18, 20],
+        [21, 11],
+        [29, 5],
+        [36, 3],
+        [43, 5],
+        [51, 11],
+        [54, 20],
+        [54, 41],
+        [44, 46],
+        [44, 25],
+        [42, 19],
+        [36, 15],
+        [30, 19],
+        [28, 25],
+        [28, 46],
+      ], colors.wall, 1);
+      stroke(canvas, [[18, 41], [18, 20], [21, 11], [29, 5], [36, 3], [43, 5], [51, 11], [54, 20], [54, 41]], colors.outline, 2.2, 0.96);
+      fill(canvas, [[29, 45], [29, 26], [31, 19], [36, 16], [41, 19], [43, 26], [43, 45]], colors.opening, 0.96);
+      stroke(canvas, [[20, 21], [29, 8], [36, 5], [43, 8], [52, 21]], colors.highlight, 2.1, 0.7);
+      drawChipHighlights(canvas, 37, colors, [[24, 30], [48, 30], [26, 20], [46, 20]]);
+      break;
+    case 'horizontalArch':
+      fill(canvas, [
+        [3, 24],
+        [36, 5],
+        [69, 24],
+        [56, 36],
+        [44, 31],
+        [36, 28],
+        [28, 31],
+        [16, 36],
+      ], colors.wall, 1);
+      stroke(canvas, [[4, 24], [36, 6], [68, 24], [56, 36], [44, 31], [36, 28], [28, 31], [16, 36], [4, 24]], colors.outline, 2.2, 0.96);
+      fill(canvas, [[20, 28], [36, 17], [52, 28], [44, 35], [36, 32], [28, 35]], colors.opening, 0.96);
+      stroke(canvas, [[7, 24], [36, 8], [65, 24]], colors.highlight, 2.2, 0.7);
+      drawChipHighlights(canvas, 41, colors, [[18, 29], [54, 29], [28, 18], [44, 18]]);
+      break;
+    case 'pillar':
+      fill(canvas, [[21, 15], [36, 5], [51, 15], [47, 22], [25, 22]], colors.cap, 1);
+      drawMasonrySlab(canvas, [[24, 17], [48, 17], [52, 37], [36, 47], [20, 37]], colors, 43);
+      fill(canvas, [[20, 36], [36, 28], [52, 36], [36, 46]], colors.cap, 0.96);
+      stroke(canvas, [[36, 8], [36, 44]], colors.highlight, 2.1, 0.62);
+      stroke(canvas, [[27, 25], [45, 25], [45, 26], [27, 26]], colors.joint, 1.1, 0.5);
+      break;
+    case 'dividingWall':
+      drawMasonrySlab(canvas, [[6, 24], [36, 10], [66, 24], [36, 38]], colors, 47);
+      stroke(canvas, [[10, 24], [36, 14], [62, 24]], colors.highlight, 3, 0.68);
+      stroke(canvas, [[20, 25], [36, 18], [52, 25]], colors.joint, 1.2, 0.48);
+      break;
+    default:
+      throw new Error(`Unsupported structure sprite variant: ${variant}`);
+  }
+
+  const pixels = downsample(canvas);
+  applyStoneTexture(pixels, width, height, hashString(variant));
+  return encodePng(width, height, pixels);
+}
+
+function structureColors(palette) {
+  return {
+    floor: hexToRgb(palette[0]),
+    outline: hexToRgb(palette[1]),
+    wall: lighten(hexToRgb(palette[2]), 12),
+    wallDark: darken(hexToRgb(palette[2]), 28),
+    cap: lighten(hexToRgb(palette[2]), 24),
+    joint: [193, 199, 212],
+    highlight: [218, 223, 234],
+    shadow: [2, 3, 4],
+    opening: [3, 4, 6],
+  };
+}
+
+function drawStructureBase(canvas, colors) {
+  fill(canvas, [[4, 29], [36, 47], [68, 29], [36, 39]], colors.shadow, 0.72);
+  fill(canvas, [[36, 6], [70, 24], [36, 42], [2, 24]], colors.floor, 0.88);
+  stroke(canvas, [[36, 6], [70, 24], [36, 42], [2, 24], [36, 6]], colors.outline, 1.2, 0.72);
+  fill(canvas, [[5, 24], [36, 7], [67, 24], [36, 41]], colors.wallDark, 0.94);
+  stroke(canvas, [[8, 24], [36, 39], [64, 24]], colors.highlight, 2.2, 0.42);
+  stroke(canvas, [[10, 24], [62, 24]], colors.outline, 1.1, 0.48);
+  stroke(canvas, [[36, 9], [36, 40]], colors.outline, 1, 0.38);
+}
+
+function drawMasonrySlab(canvas, points, colors, seed) {
+  fill(canvas, points.map(([x, y]) => [x, y + 2]), colors.shadow, 0.34);
+  fill(canvas, points, colors.wall, 1);
+  stroke(canvas, [...points, points[0]], colors.outline, 2.2, 0.96);
+  stroke(canvas, [points[0], points[1], points[2]], colors.highlight, 1.4, 0.48);
+  drawChipHighlights(canvas, seed, colors, points.slice(0, 4));
+}
+
+function drawChipHighlights(canvas, seed, colors, anchors) {
+  for (let index = 0; index < anchors.length; index += 1) {
+    const [x, y] = anchors[index];
+    const offset = (hashNoise(seed + index, index) - 0.5) * 4;
+    stroke(canvas, [[x - 3, y + offset], [x + 4, y + offset + 1]], colors.joint, 1.1, 0.34);
+  }
+}
+
+function applyStoneTexture(pixels, width, height, seed) {
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const index = (y * width + x) * 4;
+      if (pixels[index + 3] < 80) {
+        continue;
+      }
+      const grain = Math.floor((hashNoise(x + seed, y - seed) - 0.5) * 18);
+      pixels[index] = clampByte(pixels[index] + grain);
+      pixels[index + 1] = clampByte(pixels[index + 1] + grain);
+      pixels[index + 2] = clampByte(pixels[index + 2] + grain + 1);
+      if (hashNoise(x * 7 + seed, y * 11 - seed) > 0.965) {
+        pixels[index] = clampByte(pixels[index] + 22);
+        pixels[index + 1] = clampByte(pixels[index + 1] + 22);
+        pixels[index + 2] = clampByte(pixels[index + 2] + 24);
+      }
+      if (hashNoise(x * 13 - seed, y * 5 + seed) < 0.025) {
+        pixels[index] = clampByte(pixels[index] - 20);
+        pixels[index + 1] = clampByte(pixels[index + 1] - 20);
+        pixels[index + 2] = clampByte(pixels[index + 2] - 18);
+      }
+    }
+  }
 }
 
 function assertTileSize(width, height, label) {

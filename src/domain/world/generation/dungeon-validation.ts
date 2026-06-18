@@ -6,9 +6,10 @@ import type {
   DungeonResourceBindingReport,
   DungeonValidationIssue,
   DungeonValidationReport,
+  RenderTileKind,
   TileKind,
 } from '../dungeon-types';
-import { REQUIRED_TILE_SEMANTICS } from '../tile-semantics';
+import { knownTileSemanticsForDungeon } from '../tile-semantics';
 import { inside, neighbors4, parsePointKey, PASSABLE_TILES, VALID_TILE_KINDS } from './shared';
 
 export function isPassable(tile: TileKind): boolean {
@@ -42,9 +43,11 @@ export function buildConnectivityGraph(level: DungeonLevel): DungeonConnectivity
 }
 
 export function validateResourceBindings(level: DungeonLevel): DungeonResourceBindingReport {
-  const used = new Set<`tile.${TileKind}`>();
+  const used = new Set<`tile.${RenderTileKind}`>();
   forEachTile(level, (_point, tile) => used.add(`tile.${tile}`));
-  const missingSemantics = [...used].filter((semantic) => !REQUIRED_TILE_SEMANTICS.includes(semantic));
+  forEachRenderTile(level, (_point, tile) => used.add(`tile.${tile}`));
+  const knownSemantics = knownTileSemanticsForDungeon(level.dungeonType);
+  const missingSemantics = [...used].filter((semantic) => !knownSemantics.includes(semantic));
   return {
     ok: missingSemantics.length === 0,
     missingSemantics,
@@ -323,6 +326,17 @@ export function forEachTile(level: DungeonLevel, visitor: (point: GridPoint, til
   for (let y = 0; y < level.height; y += 1) {
     for (let x = 0; x < level.width; x += 1) {
       visitor({ x, y }, level.tiles[y][x]);
+    }
+  }
+}
+
+function forEachRenderTile(level: DungeonLevel, visitor: (point: GridPoint, tile: RenderTileKind) => void): void {
+  if (!level.renderTiles) {
+    return;
+  }
+  for (let y = 0; y < level.height; y += 1) {
+    for (let x = 0; x < level.width; x += 1) {
+      visitor({ x, y }, level.renderTiles[y][x]);
     }
   }
 }

@@ -1,8 +1,11 @@
 import type { GridPoint, GridRect } from '../../core/grid';
+import type { CathedralStructureTileKind } from './cathedral-render-tiles';
 
 export type DungeonType = 'Cathedral' | 'Catacombs' | 'Caves' | 'Hell';
 export type SeedMode = 'random' | 'manual' | 'fixture';
 export type TileKind = 'void' | 'floor' | 'wall' | 'door' | 'stairUp' | 'stairDown';
+export type RenderTileKind = TileKind | CathedralStructureTileKind;
+export type TileAssetSemantic = `tile.${RenderTileKind}`;
 
 export interface DungeonGenerationRequest {
   dungeonType: DungeonType;
@@ -98,6 +101,20 @@ export interface CathedralObjectPresetProfile {
   }[];
 }
 
+export interface CathedralDividingWallMetadata {
+  orientation: 'horizontal' | 'vertical';
+  line: GridRect;
+  wallPositions: readonly GridPoint[];
+  archPositions: readonly GridPoint[];
+}
+
+export interface CathedralTileizationMetadata {
+  renderTileKinds: readonly CathedralStructureTileKind[];
+  structureTileCounts: Readonly<Record<CathedralStructureTileKind, number>>;
+  hallArchPositions: readonly GridPoint[];
+  dividingWalls: readonly CathedralDividingWallMetadata[];
+}
+
 export interface CathedralGenerationMetadata {
   familyId: 'Cathedral';
   generatorKind: 'chamber-recursive';
@@ -115,6 +132,7 @@ export interface CathedralGenerationMetadata {
   sideRooms: readonly GridRect[];
   hallMask: GridRect;
   pillarPositions: readonly GridPoint[];
+  tileization: CathedralTileizationMetadata;
   minisetPlacements: readonly DungeonMinisetPlacement[];
   objectPresetProfile: CathedralObjectPresetProfile;
 }
@@ -339,6 +357,8 @@ export interface DungeonLevel {
   gridContract: DungeonGridContract;
   seed: number;
   tiles: TileKind[][];
+  renderTiles?: RenderTileKind[][];
+  renderChecksum?: string;
   rooms: GridRect[];
   doors: GridPoint[];
   stairs: {

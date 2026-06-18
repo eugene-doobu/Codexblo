@@ -1,14 +1,16 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
+import { inflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
+import { CATHEDRAL_STRUCTURE_TILE_KINDS } from '../src/domain/world/cathedral-render-tiles';
 import type { TileKind } from '../src/domain/world/dungeon-generator';
 import { REQUIRED_TILE_SEMANTICS } from '../src/domain/world/tile-semantics';
 import {
   resourcePackIdForDungeonType,
+  CATHEDRAL_TILE_ASSET_KEYS,
+  CATHEDRAL_TILE_ASSET_PATHS,
   TILE_ASSET_ENTRIES,
-  TILE_ASSET_KEYS,
   TILE_ASSET_KEYS_BY_DUNGEON,
-  TILE_ASSET_PATHS,
   TILE_ASSET_PATHS_BY_DUNGEON,
   tileAssetKeysForResourcePack,
   tileAssetPathsForResourcePack,
@@ -32,8 +34,8 @@ describe('Dungeon generated resources', () => {
       expect(entry!.path.includes('..')).toBe(false);
 
       const tileKind = entry!.semantic.replace('tile.', '') as TileKind;
-      expect(TILE_ASSET_KEYS[tileKind]).toBe(entry!.key);
-      expect(TILE_ASSET_PATHS[tileKind]).toBe(entry!.path);
+      expect(CATHEDRAL_TILE_ASSET_KEYS[tileKind]).toBe(entry!.key);
+      expect(CATHEDRAL_TILE_ASSET_PATHS[tileKind]).toBe(entry!.path);
 
       const assetPath = resolve(publicRoot, entry!.path.replace(/^\//, ''));
       const relativeAssetPath = relative(publicRoot, assetPath);
@@ -68,6 +70,73 @@ describe('Dungeon generated resources', () => {
       expect(path.startsWith('/assets/catacombs/')).toBe(true);
       expect(existsSync(assetPath)).toBe(true);
     }
+  });
+
+  it('includes Cathedral structure tile placeholders and runtime mappings', () => {
+    const publicRoot = resolve(process.cwd(), 'public');
+    const manifestPath = join(publicRoot, 'assets/asset-manifest.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+      resourcePacks: { resourcePackId: string; dungeonTypes: string[]; assets: AssetManifestEntry[] }[];
+    };
+    const pack = manifest.resourcePacks.find((resourcePack) => resourcePack.resourcePackId === 'cathedral-lab-placeholder');
+
+    expect(pack).toBeDefined();
+    expect(pack!.dungeonTypes).toEqual(['Cathedral']);
+    expect(pack!.assets).toHaveLength(REQUIRED_TILE_SEMANTICS.length + CATHEDRAL_STRUCTURE_TILE_KINDS.length);
+
+    for (const tileKind of CATHEDRAL_STRUCTURE_TILE_KINDS) {
+      const semantic = `tile.${tileKind}`;
+      const entry = pack!.assets.find((asset) => asset.semantic === semantic);
+      const path = TILE_ASSET_PATHS_BY_DUNGEON.Cathedral[tileKind];
+      const assetPath = resolve(publicRoot, path!.replace(/^\//, ''));
+
+      expect(entry).toBeDefined();
+      expect(TILE_ASSET_KEYS_BY_DUNGEON.Cathedral[tileKind]).toBe(entry!.key);
+      expect(path).toBe(entry!.path);
+      expect(path).toMatch(/^\/assets\/cathedral\/tile-.+\.png$/);
+      expect(existsSync(assetPath)).toBe(true);
+    }
+
+    expect(tileAssetKeysForResourcePack('cathedral-lab-placeholder').cathedralPillar).toBe('cathedral.cathedralPillar');
+    expect(tileAssetPathsForResourcePack('cathedral-lab-placeholder').cathedralPillar).toBe('/assets/cathedral/tile-pillar.png');
+    expect(tileAssetKeysForResourcePack('catacombs-lab-placeholder').cathedralPillar).toBeUndefined();
+  });
+
+  it('emits Cathedral structure sprites as transparent PNG images with shared wall coverage', () => {
+    const publicRoot = resolve(process.cwd(), 'public');
+
+    for (const tileKind of CATHEDRAL_STRUCTURE_TILE_KINDS) {
+      const path = TILE_ASSET_PATHS_BY_DUNGEON.Cathedral[tileKind];
+      const assetPath = resolve(publicRoot, path!.replace(/^\//, ''));
+      const image = readPng(readFileSync(assetPath));
+      const coverage = opaqueBounds(image);
+
+      expect(path).toMatch(/\.png$/);
+      expect(image.width).toBe(72);
+      expect(image.height).toBe(48);
+      expect(image.colorType).toBe(6);
+      expect(coverage.opaquePixels).toBeGreaterThan(700);
+      expect(coverage.transparentPixels).toBeGreaterThan(700);
+      expect(coverage.minX).toBeLessThanOrEqual(6);
+      expect(coverage.maxX).toBeGreaterThanOrEqual(66);
+      expect(coverage.minY).toBeLessThanOrEqual(8);
+      expect(coverage.maxY).toBeGreaterThanOrEqual(40);
+    }
+  });
+
+  it('renders Cathedral arches as wall-like PNG sprites with dark pass-through openings', () => {
+    const publicRoot = resolve(process.cwd(), 'public');
+    const verticalPath = resolve(publicRoot, TILE_ASSET_PATHS_BY_DUNGEON.Cathedral.cathedralVerticalArch!.replace(/^\//, ''));
+    const horizontalPath = resolve(publicRoot, TILE_ASSET_PATHS_BY_DUNGEON.Cathedral.cathedralHorizontalArch!.replace(/^\//, ''));
+    const vertical = readPng(readFileSync(verticalPath));
+    const horizontal = readPng(readFileSync(horizontalPath));
+
+    expect(alphaAt(vertical, 36, 34)).toBeGreaterThan(180);
+    expect(luminanceAt(vertical, 36, 34)).toBeLessThan(45);
+    expect(luminanceAt(vertical, 23, 28)).toBeGreaterThan(55);
+    expect(alphaAt(horizontal, 36, 28)).toBeGreaterThan(180);
+    expect(luminanceAt(horizontal, 36, 28)).toBeLessThan(45);
+    expect(luminanceAt(horizontal, 16, 27)).toBeGreaterThan(55);
   });
 
   it('includes a separate Caves resource pack and runtime asset mapping', () => {
@@ -129,7 +198,7 @@ describe('Dungeon generated resources', () => {
 
   it('renders wall art as a raised block above the floor footprint', () => {
     const publicRoot = resolve(process.cwd(), 'public');
-    const wallPath = resolve(publicRoot, TILE_ASSET_PATHS.wall.replace(/^\//, ''));
+    const wallPath = resolve(publicRoot, CATHEDRAL_TILE_ASSET_PATHS.wall.replace(/^\//, ''));
     const wallSvg = readFileSync(wallPath, 'utf8');
     const topPath = pathDataForLayer(wallSvg, 'wall-top');
     const topPoints = pointsFromPath(topPath);
@@ -147,7 +216,7 @@ describe('Dungeon generated resources', () => {
     ['stairDown', 'stair-down-fill'],
   ] satisfies [TileKind, string][])('fills the tile footprint for %s object art', (tileKind, layer) => {
     const publicRoot = resolve(process.cwd(), 'public');
-    const assetPath = resolve(publicRoot, TILE_ASSET_PATHS[tileKind].replace(/^\//, ''));
+    const assetPath = resolve(publicRoot, CATHEDRAL_TILE_ASSET_PATHS[tileKind].replace(/^\//, ''));
     const svg = readFileSync(assetPath, 'utf8');
     const objectPoints = pointsFromPath(pathDataForLayer(svg, layer));
     const bounds = boundsForPoints(objectPoints);
@@ -160,7 +229,7 @@ describe('Dungeon generated resources', () => {
 
   it('renders doors as full-tile panels instead of small marker icons', () => {
     const publicRoot = resolve(process.cwd(), 'public');
-    const doorPath = resolve(publicRoot, TILE_ASSET_PATHS.door.replace(/^\//, ''));
+    const doorPath = resolve(publicRoot, CATHEDRAL_TILE_ASSET_PATHS.door.replace(/^\//, ''));
     const doorSvg = readFileSync(doorPath, 'utf8');
 
     expect(doorSvg).toContain('data-layer="door-fill"');
@@ -191,4 +260,94 @@ function boundsForPoints(points: { x: number; y: number }[]): { minX: number; ma
     minY: Math.min(...points.map((point) => point.y)),
     maxY: Math.max(...points.map((point) => point.y)),
   };
+}
+
+function readPng(buffer: Buffer): { width: number; height: number; colorType: number; pixels: Uint8Array } {
+  if (!buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) {
+    throw new Error('Invalid PNG signature.');
+  }
+
+  let offset = 8;
+  let width = 0;
+  let height = 0;
+  let colorType = -1;
+  const idatChunks: Buffer[] = [];
+
+  while (offset < buffer.length) {
+    const length = buffer.readUInt32BE(offset);
+    const type = buffer.toString('ascii', offset + 4, offset + 8);
+    const data = buffer.subarray(offset + 8, offset + 8 + length);
+    if (type === 'IHDR') {
+      width = data.readUInt32BE(0);
+      height = data.readUInt32BE(4);
+      colorType = data[9];
+    }
+    if (type === 'IDAT') {
+      idatChunks.push(data);
+    }
+    offset += length + 12;
+    if (type === 'IEND') {
+      break;
+    }
+  }
+
+  const stride = width * 4;
+  const inflated = inflateSync(Buffer.concat(idatChunks));
+  const pixels = new Uint8Array(width * height * 4);
+  for (let y = 0; y < height; y += 1) {
+    const rowStart = y * (stride + 1);
+    const filter = inflated[rowStart];
+    if (filter !== 0) {
+      throw new Error(`Unsupported PNG filter: ${filter}`);
+    }
+    pixels.set(inflated.subarray(rowStart + 1, rowStart + 1 + stride), y * stride);
+  }
+
+  return { width, height, colorType, pixels };
+}
+
+function opaqueBounds(image: { width: number; height: number; pixels: Uint8Array }): {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  opaquePixels: number;
+  transparentPixels: number;
+} {
+  let minX = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  let opaquePixels = 0;
+  let transparentPixels = 0;
+
+  for (let y = 0; y < image.height; y += 1) {
+    for (let x = 0; x < image.width; x += 1) {
+      const alpha = alphaAt(image, x, y);
+      if (alpha > 32) {
+        opaquePixels += 1;
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+      } else {
+        transparentPixels += 1;
+      }
+    }
+  }
+
+  if (opaquePixels === 0) {
+    throw new Error('PNG has no opaque pixels.');
+  }
+
+  return { minX, maxX, minY, maxY, opaquePixels, transparentPixels };
+}
+
+function alphaAt(image: { width: number; pixels: Uint8Array }, x: number, y: number): number {
+  return image.pixels[(y * image.width + x) * 4 + 3];
+}
+
+function luminanceAt(image: { width: number; pixels: Uint8Array }, x: number, y: number): number {
+  const index = (y * image.width + x) * 4;
+  return image.pixels[index] * 0.2126 + image.pixels[index + 1] * 0.7152 + image.pixels[index + 2] * 0.0722;
 }

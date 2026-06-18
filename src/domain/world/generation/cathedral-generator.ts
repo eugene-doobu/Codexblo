@@ -25,6 +25,7 @@ import {
   trailingSideRoomProbe,
 } from './shared';
 import { cathedralObjectPresetProfile, placeCathedralObjectPresets } from './cathedral-object-presets';
+import { buildCathedralTileization } from './cathedral-tiles';
 
 const CATHEDRAL_REGENERATION_LIMIT = 256;
 const SIDE_ROOM_ATTEMPTS = 20;
@@ -68,6 +69,13 @@ export function generateCathedralLevel(request: DungeonGenerationRequest, seed: 
   const down = placeStairMiniset(rng, tiles, protectedFootprints, 'STAIRSDOWN', { width: 4, height: 3 });
   minisetPlacements.push(down.miniset);
   minisetPlacements.push(...placeLampMinisets(rng, tiles, protectedFootprints));
+  const tileization = buildCathedralTileization(tiles, {
+    verticalLayout: layout.verticalLayout,
+    chamberInteriors: layout.chamberInteriors,
+    hallMask: layout.hallMask,
+    pillarPositions,
+    minisetPlacements,
+  });
 
   const rooms = layout.rooms.map((room) => room.rect);
   const doors = inferDoorCandidates(tiles);
@@ -86,6 +94,7 @@ export function generateCathedralLevel(request: DungeonGenerationRequest, seed: 
     sideRooms: layout.rooms.filter((room) => room.kind === 'side').map((room) => room.rect),
     hallMask: layout.hallMask,
     pillarPositions,
+    tileization: tileization.metadata,
     minisetPlacements,
     objectPresetProfile: cathedralObjectPresetProfile(request.includeObjects),
   };
@@ -98,6 +107,7 @@ export function generateCathedralLevel(request: DungeonGenerationRequest, seed: 
     gridContract: GRID_CONTRACT,
     seed,
     tiles,
+    renderTiles: tileization.renderTiles,
     rooms,
     doors,
     stairs: { up: up.point, down: down.point },

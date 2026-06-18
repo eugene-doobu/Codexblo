@@ -1,5 +1,6 @@
 import { checksumJson } from '../../core/hash';
-import type { DungeonGenerationResult, TileKind } from './dungeon-types';
+import type { CathedralStructureTileKind } from './cathedral-render-tiles';
+import type { DungeonGenerationResult, RenderTileKind, TileKind } from './dungeon-types';
 
 export const DUNGEON_COMPARISON_SCHEMA = 'dungeon-grid-v1' as const;
 
@@ -10,6 +11,18 @@ const TILE_TO_SYMBOL: Record<TileKind, string> = {
   door: '+',
   stairUp: '<',
   stairDown: '>',
+};
+
+const RENDER_TILE_TO_SYMBOL: Record<TileKind | CathedralStructureTileKind, string> = {
+  ...TILE_TO_SYMBOL,
+  cathedralVerticalWall: 'V',
+  cathedralHorizontalWall: 'H',
+  cathedralCornerWall: 'C',
+  cathedralDiagonalWall: 'D',
+  cathedralVerticalArch: 'A',
+  cathedralHorizontalArch: 'a',
+  cathedralPillar: 'P',
+  cathedralDividingWall: '=',
 };
 
 export interface DungeonComparisonSnapshot {
@@ -30,6 +43,8 @@ export interface DungeonComparisonSnapshot {
   };
   tileRows: string[];
   legend: Record<TileKind, string>;
+  renderTileRows?: string[];
+  renderLegend?: Record<string, string>;
   generation: {
     familyId: string;
     generatorKind: string;
@@ -46,12 +61,14 @@ export interface NormalizedDungeonSnapshot {
   width: number;
   height: number;
   rows: string[];
+  renderRows?: string[];
   checksum?: string;
 }
 
 export interface DungeonSnapshotMismatch {
   x: number;
   y: number;
+  layer?: 'renderTile';
   candidate: string;
   reference: string;
 }
@@ -85,6 +102,8 @@ export function createDungeonComparisonSnapshot(result: DungeonGenerationResult)
     },
     tileRows: result.level.tiles.map((row) => row.map((tile) => TILE_TO_SYMBOL[tile]).join('')),
     legend: TILE_TO_SYMBOL,
+    renderTileRows: result.level.renderTiles?.map((row) => row.map(renderTileSymbol).join('')),
+    renderLegend: result.level.renderTiles ? RENDER_TILE_TO_SYMBOL : undefined,
     generation: {
       familyId: result.level.generation.familyId,
       generatorKind: result.level.generation.generatorKind,
@@ -124,20 +143,20 @@ export function compareDungeonSnapshots(
   const dimensionsMatch = candidate.width === reference.width && candidate.height === reference.height;
   const width = Math.max(candidate.width, reference.width);
   const height = Math.max(candidate.height, reference.height);
+  const renderRowsCompared = Boolean(candidate.renderRows || reference.renderRows);
   const mismatches: DungeonSnapshotMismatch[] = [];
-  let mismatchCount = 0;
+  let mismatchCount = countRowMismatches(candidate.rows, reference.rows, width, height, mismatches, maxMismatches);
 
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      const candidateCell = cellAt(candidate, x, y);
-      const referenceCell = cellAt(reference, x, y);
-      if (candidateCell !== referenceCell) {
-        mismatchCount += 1;
-        if (mismatches.length < maxMismatches) {
-          mismatches.push({ x, y, candidate: candidateCell, reference: referenceCell });
-        }
-      }
-    }
+  if (renderRowsCompared) {
+    mismatchCount += countRowMismatches(
+      candidate.renderRows ?? [],
+      reference.renderRows ?? [],
+      width,
+      height,
+      mismatches,
+      maxMismatches,
+      'renderTile',
+    );
   }
 
   const checksumMatch = candidate.checksum && reference.checksum ? candidate.checksum === reference.checksum : undefined;
@@ -147,8 +166,8 @@ export function compareDungeonSnapshots(
     checksumMatch,
     mismatchCount,
     mismatches,
-    candidateHistogram: histogram(candidate.rows),
-    referenceHistogram: histogram(reference.rows),
+    candidateHistogram: histogram(renderRowsCompared ? [...candidate.rows, ...(candidate.renderRows ?? [])] : candidate.rows),
+    referenceHistogram: histogram(renderRowsCompared ? [...reference.rows, ...(reference.renderRows ?? [])] : reference.rows),
   };
 }
 
@@ -158,6 +177,7 @@ export function normalizeDungeonSnapshot(input: DungeonComparisonSnapshot | Norm
       width: input.grid.width,
       height: input.grid.height,
       rows: input.tileRows,
+      renderRows: input.renderTileRows,
       checksum: input.checksum,
     };
   }
@@ -166,6 +186,7 @@ export function normalizeDungeonSnapshot(input: DungeonComparisonSnapshot | Norm
     width: input.width,
     height: input.height,
     rows: input.rows,
+    renderRows: input.renderRows,
     checksum: input.checksum,
   };
 }
@@ -174,11 +195,36 @@ export function checksumDungeonRows(rows: readonly string[]): string {
   return checksumJson(rows);
 }
 
-function cellAt(snapshot: NormalizedDungeonSnapshot, x: number, y: number): string {
-  if (x >= snapshot.width || y >= snapshot.height) {
+function countRowMismatches(
+  candidateRows: readonly string[],
+  referenceRows: readonly string[],
+  width: number,
+  height: number,
+  mismatches: DungeonSnapshotMismatch[],
+  maxMismatches: number,
+  layer?: DungeonSnapshotMismatch['layer'],
+): number {
+  let mismatchCount = 0;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const candidateCell = cellAt(candidateRows, width, height, x, y);
+      const referenceCell = cellAt(referenceRows, width, height, x, y);
+      if (candidateCell !== referenceCell) {
+        mismatchCount += 1;
+        if (mismatches.length < maxMismatches) {
+          mismatches.push(layer ? { x, y, layer, candidate: candidateCell, reference: referenceCell } : { x, y, candidate: candidateCell, reference: referenceCell });
+        }
+      }
+    }
+  }
+  return mismatchCount;
+}
+
+function cellAt(rows: readonly string[], width: number, height: number, x: number, y: number): string {
+  if (x >= width || y >= height) {
     return '';
   }
-  return snapshot.rows[y]?.[x] ?? '';
+  return rows[y]?.[x] ?? '';
 }
 
 function histogram(rows: readonly string[]): Record<string, number> {
@@ -189,4 +235,8 @@ function histogram(rows: readonly string[]): Record<string, number> {
     }
   }
   return counts;
+}
+
+function renderTileSymbol(tile: RenderTileKind): string {
+  return RENDER_TILE_TO_SYMBOL[tile as TileKind | CathedralStructureTileKind] ?? '?';
 }

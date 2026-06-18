@@ -4,8 +4,10 @@ export type {
   CatacombsGenerationMetadata,
   CatacombsHallDirection,
   CatacombsHallMetadata,
+  CathedralDividingWallMetadata,
   CathedralGenerationMetadata,
   CathedralObjectPresetProfile,
+  CathedralTileizationMetadata,
   CavesAnvilReserveMetadata,
   CavesCleanupPass,
   CavesFixtureId,
@@ -28,7 +30,9 @@ export type {
   DungeonValidationReport,
   DungeonZone,
   HellGenerationMetadata,
+  RenderTileKind,
   SeedMode,
+  TileAssetSemantic,
   TileKind,
 } from './dungeon-types';
 export {

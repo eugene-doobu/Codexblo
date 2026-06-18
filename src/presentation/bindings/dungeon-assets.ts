@@ -1,4 +1,5 @@
-import type { DungeonType, TileKind } from '../../domain/world/dungeon-types';
+import type { CathedralStructureTileKind } from '../../domain/world/cathedral-render-tiles';
+import type { DungeonType, RenderTileKind, TileAssetSemantic, TileKind } from '../../domain/world/dungeon-types';
 import { REQUIRED_TILE_KINDS, REQUIRED_TILE_SEMANTICS } from '../../domain/world/tile-semantics';
 import {
   CATACOMBS_ASSET_REGISTRY,
@@ -15,11 +16,15 @@ import {
 export interface AssetManifestEntry {
   key: string;
   kind: 'image';
-  semantic: `tile.${TileKind}`;
+  semantic: TileAssetSemantic;
   path: string;
   width: number;
   height: number;
 }
+
+export type TileAssetMap = Record<TileKind, string> & Partial<Record<CathedralStructureTileKind, string>> & {
+  [tileKind: string]: string | undefined;
+};
 
 export interface AssetManifest {
   schemaVersion: number;
@@ -49,31 +54,31 @@ export const TILE_ASSET_KEYS_BY_RESOURCE_PACK = {
   [CATACOMBS_RESOURCE_PACK_ID]: mapTileAssets(CATACOMBS_ASSET_REGISTRY, (entry) => entry.key),
   [CAVES_RESOURCE_PACK_ID]: mapTileAssets(CAVES_ASSET_REGISTRY, (entry) => entry.key),
   [HELL_RESOURCE_PACK_ID]: mapTileAssets(HELL_ASSET_REGISTRY, (entry) => entry.key),
-} satisfies Record<string, Record<TileKind, string>>;
+} satisfies Record<string, TileAssetMap>;
 
 export const TILE_ASSET_PATHS_BY_RESOURCE_PACK = {
   [CATHEDRAL_RESOURCE_PACK_ID]: mapTileAssets(CATHEDRAL_ASSET_REGISTRY, (entry) => entry.path),
   [CATACOMBS_RESOURCE_PACK_ID]: mapTileAssets(CATACOMBS_ASSET_REGISTRY, (entry) => entry.path),
   [CAVES_RESOURCE_PACK_ID]: mapTileAssets(CAVES_ASSET_REGISTRY, (entry) => entry.path),
   [HELL_RESOURCE_PACK_ID]: mapTileAssets(HELL_ASSET_REGISTRY, (entry) => entry.path),
-} satisfies Record<string, Record<TileKind, string>>;
+} satisfies Record<string, TileAssetMap>;
 
 export const TILE_ASSET_KEYS_BY_DUNGEON = {
   Cathedral: tileAssetKeysForResourcePack(RESOURCE_PACK_ID_BY_DUNGEON.Cathedral),
   Catacombs: tileAssetKeysForResourcePack(RESOURCE_PACK_ID_BY_DUNGEON.Catacombs),
   Caves: tileAssetKeysForResourcePack(RESOURCE_PACK_ID_BY_DUNGEON.Caves),
   Hell: tileAssetKeysForResourcePack(RESOURCE_PACK_ID_BY_DUNGEON.Hell),
-} satisfies Record<DungeonType, Record<TileKind, string>>;
+} satisfies Record<DungeonType, TileAssetMap>;
 
 export const TILE_ASSET_PATHS_BY_DUNGEON = {
   Cathedral: tileAssetPathsForResourcePack(RESOURCE_PACK_ID_BY_DUNGEON.Cathedral),
   Catacombs: tileAssetPathsForResourcePack(RESOURCE_PACK_ID_BY_DUNGEON.Catacombs),
   Caves: tileAssetPathsForResourcePack(RESOURCE_PACK_ID_BY_DUNGEON.Caves),
   Hell: tileAssetPathsForResourcePack(RESOURCE_PACK_ID_BY_DUNGEON.Hell),
-} satisfies Record<DungeonType, Record<TileKind, string>>;
+} satisfies Record<DungeonType, TileAssetMap>;
 
-export const TILE_ASSET_KEYS = TILE_ASSET_KEYS_BY_DUNGEON.Cathedral;
-export const TILE_ASSET_PATHS = TILE_ASSET_PATHS_BY_DUNGEON.Cathedral;
+export const CATHEDRAL_TILE_ASSET_KEYS = TILE_ASSET_KEYS_BY_DUNGEON.Cathedral;
+export const CATHEDRAL_TILE_ASSET_PATHS = TILE_ASSET_PATHS_BY_DUNGEON.Cathedral;
 
 export { REQUIRED_TILE_SEMANTICS };
 
@@ -81,21 +86,25 @@ export function resourcePackIdForDungeonType(dungeonType: DungeonType): string {
   return RESOURCE_PACK_ID_BY_DUNGEON[dungeonType];
 }
 
-export function tileAssetKeysForResourcePack(resourcePackId: string): Record<TileKind, string> {
+export function tileAssetKeysForResourcePack(resourcePackId: string): TileAssetMap {
   return requiredPack(TILE_ASSET_KEYS_BY_RESOURCE_PACK, resourcePackId);
 }
 
-export function tileAssetPathsForResourcePack(resourcePackId: string): Record<TileKind, string> {
+export function tileAssetPathsForResourcePack(resourcePackId: string): TileAssetMap {
   return requiredPack(TILE_ASSET_PATHS_BY_RESOURCE_PACK, resourcePackId);
 }
 
 function mapTileAssets(
   entries: readonly AssetManifestEntry[],
   valueOf: (entry: AssetManifestEntry) => string,
-): Record<TileKind, string> {
-  return Object.fromEntries(
+): TileAssetMap {
+  const mapped = Object.fromEntries(
     REQUIRED_TILE_KINDS.map((tileKind) => [tileKind, valueOf(requiredEntryFor(entries, tileKind))]),
-  ) as Record<TileKind, string>;
+  ) as TileAssetMap;
+  for (const entry of entries) {
+    mapped[tileKindFromSemantic(entry.semantic)] = valueOf(entry);
+  }
+  return mapped;
 }
 
 function requiredEntryFor(entries: readonly AssetManifestEntry[], tileKind: TileKind): AssetManifestEntry {
@@ -105,6 +114,10 @@ function requiredEntryFor(entries: readonly AssetManifestEntry[], tileKind: Tile
     throw new Error(`Missing dungeon asset registry entry for ${semantic}.`);
   }
   return entry;
+}
+
+function tileKindFromSemantic(semantic: TileAssetSemantic): RenderTileKind {
+  return semantic.slice('tile.'.length) as RenderTileKind;
 }
 
 function requiredPack<T>(packs: Readonly<Record<string, T>>, resourcePackId: string): T {

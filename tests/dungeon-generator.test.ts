@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { CATHEDRAL_STRUCTURE_TILE_KINDS } from '../src/domain/world/cathedral-render-tiles';
 import {
   DUNGEON_RESOURCE_PACK_IDS,
   DUNGEON_GENERATOR_VERSION,
@@ -49,7 +50,9 @@ describe('Cathedral dungeon generation', () => {
 
     expect(first.seed).toBe(second.seed);
     expect(first.level.checksum).toBe(second.level.checksum);
+    expect(first.level.renderChecksum).toBe(second.level.renderChecksum);
     expect(first.level.tiles).toEqual(second.level.tiles);
+    expect(first.level.renderTiles).toEqual(second.level.renderTiles);
   });
 
   it('pins the Cathedral v2 fixture checksum', () => {
@@ -102,6 +105,38 @@ describe('Cathedral dungeon generation', () => {
     const lampCount = generation.minisetPlacements.filter((placement) => placement.id === 'LAMPS').length;
     expect(lampCount).toBeGreaterThanOrEqual(5);
     expect(lampCount).toBeLessThanOrEqual(9);
+  });
+
+  it('tileizes Cathedral rooms into renderable structure tile ids', () => {
+    const result = generateDungeon(baseRequest);
+    const generation = result.level.generation;
+
+    expect(generation.familyId).toBe('Cathedral');
+    if (generation.familyId !== 'Cathedral') {
+      throw new Error('Expected Cathedral metadata.');
+    }
+
+    expect(result.level.renderTiles).toBeDefined();
+    expect(result.level.renderChecksum).toBeDefined();
+    expect(result.level.renderTiles).toHaveLength(result.level.height);
+    expect(result.level.renderTiles?.every((row) => row.length === result.level.width)).toBe(true);
+    expect(generation.tileization.renderTileKinds).toEqual(CATHEDRAL_STRUCTURE_TILE_KINDS);
+    expect(Object.keys(generation.tileization.structureTileCounts).sort()).toEqual([...CATHEDRAL_STRUCTURE_TILE_KINDS].sort());
+
+    const counts = generation.tileization.structureTileCounts;
+    expect(counts.cathedralVerticalWall).toBeGreaterThan(0);
+    expect(counts.cathedralHorizontalWall).toBeGreaterThan(0);
+    expect(counts.cathedralCornerWall).toBeGreaterThan(0);
+    expect(counts.cathedralPillar).toBe(generation.pillarPositions.length);
+    expect(counts.cathedralDividingWall).toBeGreaterThan(0);
+    expect(counts.cathedralVerticalArch + counts.cathedralHorizontalArch).toBeGreaterThan(0);
+    expect(generation.tileization.hallArchPositions.length).toBeGreaterThan(0);
+    expect(generation.tileization.dividingWalls.length).toBeGreaterThan(0);
+
+    for (const pillar of generation.pillarPositions) {
+      expect(result.level.tiles[pillar.y][pillar.x]).toBe('wall');
+      expect(result.level.renderTiles?.[pillar.y][pillar.x]).toBe('cathedralPillar');
+    }
   });
 
   it('places deterministic Cathedral object presets on valid non-overlapping footprints', () => {
@@ -239,7 +274,8 @@ describe('Cathedral dungeon generation', () => {
   it('creates comparable grid snapshots and reports cell-level differences', () => {
     const result = generateDungeon(baseRequest);
     const snapshot = createDungeonComparisonSnapshot(result);
-    const copy = { width: snapshot.grid.width, height: snapshot.grid.height, rows: [...snapshot.tileRows], checksum: snapshot.checksum };
+    const renderRows = snapshot.renderTileRows ?? [];
+    const copy = { width: snapshot.grid.width, height: snapshot.grid.height, rows: [...snapshot.tileRows], renderRows: [...renderRows], checksum: snapshot.checksum };
     const changedRows = [...snapshot.tileRows];
     changedRows[0] = `${changedRows[0].slice(0, -1)}x`;
 
@@ -248,20 +284,36 @@ describe('Cathedral dungeon generation', () => {
     expect(snapshot.requestOptions.includeSpawnZones).toBe(true);
     expect(snapshot.requestOptions.includeQuestLocks).toBe(true);
     expect(snapshot.generation.objectCount).toBe(result.level.objects?.length);
-    const comparison = compareDungeonSnapshots(snapshot, { width: snapshot.grid.width, height: snapshot.grid.height, rows: changedRows });
+    expect(snapshot.renderTileRows).toHaveLength(snapshot.grid.height);
+    expect(countSnapshotSymbols(snapshot.renderTileRows ?? [], ['V', 'H', 'C', 'P', '=', 'A', 'a'])).toBeGreaterThan(0);
+    const comparison = compareDungeonSnapshots(snapshot, { width: snapshot.grid.width, height: snapshot.grid.height, rows: changedRows, renderRows });
     expect(comparison.identical).toBe(false);
     expect(comparison.mismatchCount).toBe(1);
     expect(comparison.mismatches[0]).toEqual({ x: snapshot.grid.width - 1, y: 0, candidate: snapshot.tileRows[0][snapshot.grid.width - 1], reference: 'x' });
+
+    const changedRenderRows = [...renderRows];
+    changedRenderRows[0] = `${changedRenderRows[0].slice(0, -1)}x`;
+    const renderComparison = compareDungeonSnapshots(snapshot, { width: snapshot.grid.width, height: snapshot.grid.height, rows: snapshot.tileRows, renderRows: changedRenderRows });
+    expect(renderComparison.identical).toBe(false);
+    expect(renderComparison.mismatchCount).toBe(1);
+    expect(renderComparison.mismatches[0]).toEqual({
+      x: snapshot.grid.width - 1,
+      y: 0,
+      layer: 'renderTile',
+      candidate: renderRows[0][snapshot.grid.width - 1],
+      reference: 'x',
+    });
 
     const wider = {
       width: snapshot.grid.width + 1,
       height: snapshot.grid.height,
       rows: snapshot.tileRows.map((row) => `${row}x`),
+      renderRows: renderRows.map((row) => `${row}x`),
     };
     const dimensionComparison = compareDungeonSnapshots(snapshot, wider);
     expect(dimensionComparison.identical).toBe(false);
     expect(dimensionComparison.dimensionsMatch).toBe(false);
-    expect(dimensionComparison.mismatchCount).toBe(snapshot.grid.height);
+    expect(dimensionComparison.mismatchCount).toBe(snapshot.grid.height * 2);
   });
 
   it('supports random seed requests as first-class lab input', () => {
@@ -715,4 +767,17 @@ function footprintContainsOnlyPassable(result: DungeonGenerationResult, footprin
     }
   }
   return true;
+}
+
+function countSnapshotSymbols(rows: readonly string[], symbols: readonly string[]): number {
+  const symbolSet = new Set(symbols);
+  let count = 0;
+  for (const row of rows) {
+    for (const cell of row) {
+      if (symbolSet.has(cell)) {
+        count += 1;
+      }
+    }
+  }
+  return count;
 }

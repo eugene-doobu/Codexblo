@@ -58,6 +58,70 @@
           "path": "/assets/cathedral/tile-void.svg",
           "width": 72,
           "height": 48
+        },
+        {
+          "key": "cathedral.cathedralVerticalWall",
+          "kind": "image",
+          "semantic": "tile.cathedralVerticalWall",
+          "path": "/assets/cathedral/tile-vertical-wall.png",
+          "width": 72,
+          "height": 48
+        },
+        {
+          "key": "cathedral.cathedralHorizontalWall",
+          "kind": "image",
+          "semantic": "tile.cathedralHorizontalWall",
+          "path": "/assets/cathedral/tile-horizontal-wall.png",
+          "width": 72,
+          "height": 48
+        },
+        {
+          "key": "cathedral.cathedralCornerWall",
+          "kind": "image",
+          "semantic": "tile.cathedralCornerWall",
+          "path": "/assets/cathedral/tile-corner-wall.png",
+          "width": 72,
+          "height": 48
+        },
+        {
+          "key": "cathedral.cathedralDiagonalWall",
+          "kind": "image",
+          "semantic": "tile.cathedralDiagonalWall",
+          "path": "/assets/cathedral/tile-diagonal-wall.png",
+          "width": 72,
+          "height": 48
+        },
+        {
+          "key": "cathedral.cathedralVerticalArch",
+          "kind": "image",
+          "semantic": "tile.cathedralVerticalArch",
+          "path": "/assets/cathedral/tile-vertical-arch.png",
+          "width": 72,
+          "height": 48
+        },
+        {
+          "key": "cathedral.cathedralHorizontalArch",
+          "kind": "image",
+          "semantic": "tile.cathedralHorizontalArch",
+          "path": "/assets/cathedral/tile-horizontal-arch.png",
+          "width": 72,
+          "height": 48
+        },
+        {
+          "key": "cathedral.cathedralPillar",
+          "kind": "image",
+          "semantic": "tile.cathedralPillar",
+          "path": "/assets/cathedral/tile-pillar.png",
+          "width": 72,
+          "height": 48
+        },
+        {
+          "key": "cathedral.cathedralDividingWall",
+          "kind": "image",
+          "semantic": "tile.cathedralDividingWall",
+          "path": "/assets/cathedral/tile-dividing-wall.png",
+          "width": 72,
+          "height": 48
         }
       ]
     },
@@ -288,6 +352,70 @@
       "kind": "image",
       "semantic": "tile.void",
       "path": "/assets/cathedral/tile-void.svg",
+      "width": 72,
+      "height": 48
+    },
+    {
+      "key": "cathedral.cathedralVerticalWall",
+      "kind": "image",
+      "semantic": "tile.cathedralVerticalWall",
+      "path": "/assets/cathedral/tile-vertical-wall.png",
+      "width": 72,
+      "height": 48
+    },
+    {
+      "key": "cathedral.cathedralHorizontalWall",
+      "kind": "image",
+      "semantic": "tile.cathedralHorizontalWall",
+      "path": "/assets/cathedral/tile-horizontal-wall.png",
+      "width": 72,
+      "height": 48
+    },
+    {
+      "key": "cathedral.cathedralCornerWall",
+      "kind": "image",
+      "semantic": "tile.cathedralCornerWall",
+      "path": "/assets/cathedral/tile-corner-wall.png",
+      "width": 72,
+      "height": 48
+    },
+    {
+      "key": "cathedral.cathedralDiagonalWall",
+      "kind": "image",
+      "semantic": "tile.cathedralDiagonalWall",
+      "path": "/assets/cathedral/tile-diagonal-wall.png",
+      "width": 72,
+      "height": 48
+    },
+    {
+      "key": "cathedral.cathedralVerticalArch",
+      "kind": "image",
+      "semantic": "tile.cathedralVerticalArch",
+      "path": "/assets/cathedral/tile-vertical-arch.png",
+      "width": 72,
+      "height": 48
+    },
+    {
+      "key": "cathedral.cathedralHorizontalArch",
+      "kind": "image",
+      "semantic": "tile.cathedralHorizontalArch",
+      "path": "/assets/cathedral/tile-horizontal-arch.png",
+      "width": 72,
+      "height": 48
+    },
+    {
+      "key": "cathedral.cathedralPillar",
+      "kind": "image",
+      "semantic": "tile.cathedralPillar",
+      "path": "/assets/cathedral/tile-pillar.png",
+      "width": 72,
+      "height": 48
+    },
+    {
+      "key": "cathedral.cathedralDividingWall",
+      "kind": "image",
+      "semantic": "tile.cathedralDividingWall",
+      "path": "/assets/cathedral/tile-dividing-wall.png",
       "width": 72,
       "height": 48
     },
