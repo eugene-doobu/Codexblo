@@ -1,15 +1,22 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   createGenerationRequest,
   generateDungeon,
   type DungeonType,
 } from '../src/domain/world/dungeon-generator';
 import {
+  DUNGEON_BINARY_FORMAT_FLAGS,
+  DUNGEON_BINARY_TILE_BYTE_FORMATS,
   DUNGEON_TILE_BYTE_VALUES,
+  compareDungeonBinaryTileBytes,
   createDungeonBinaryExport,
+  decodeDungeonBinaryFile,
   decodeDungeonBinaryHeader,
   serializeDungeonBinaryFile,
   serializeDungeonTileBytes,
+  tileByteFormatForHeader,
   tileByteValue,
 } from '../src/domain/world/dungeon-binary-export';
 
@@ -50,6 +57,72 @@ describe('Dungeon binary export', () => {
       reserved: 0,
     }));
     expect(Array.from(exported.fileBytes.slice(exported.header.headerSize))).toEqual(Array.from(exported.tileBytes));
+  });
+
+  it('decodes complete binary files with semantic payload format metadata', () => {
+    const exported = createDungeonBinaryExport({ dungeonType: 'Cathedral', levelNumber: 1, seedText: '123456789' });
+    const decoded = decodeDungeonBinaryFile(exported.fileBytes);
+
+    expect(decoded.header).toEqual(exported.header);
+    expect(decoded.tileByteFormat).toBe(DUNGEON_BINARY_TILE_BYTE_FORMATS.SEMANTIC_TILE_KIND);
+    expect(Array.from(decoded.tileBytes)).toEqual(Array.from(exported.tileBytes));
+    expect(decoded.checksum).toBe(exported.checksum);
+  });
+
+  it('compares identical semantic binary payloads byte-for-byte', () => {
+    const exported = createDungeonBinaryExport({ dungeonType: 'Hell', levelNumber: 13, seedText: '123456789' });
+    const decoded = decodeDungeonBinaryFile(exported.fileBytes);
+    const comparison = compareDungeonBinaryTileBytes(exported, decoded);
+
+    expect(comparison.comparable).toBe(true);
+    expect(comparison.identical).toBe(true);
+    expect(comparison.metadataMatch).toBe(true);
+    expect(comparison.formatMatch).toBe(true);
+    expect(comparison.mismatchCount).toBe(0);
+  });
+
+  it('refuses to claim byte parity between semantic bytes and DevilutionX raw dungeon bytes', () => {
+    const exported = createDungeonBinaryExport({ dungeonType: 'Cathedral', levelNumber: 1, seedText: '123456789' });
+    const rawReference = {
+      schema: exported.schema,
+      header: {
+        ...exported.header,
+        formatFlags: DUNGEON_BINARY_FORMAT_FLAGS.DEVILUTIONX_RAW_DUNGEON,
+      },
+      tileBytes: Uint8Array.from(exported.tileBytes),
+      tileByteFormat: DUNGEON_BINARY_TILE_BYTE_FORMATS.DEVILUTIONX_RAW_DUNGEON,
+      checksum: 'fake-devilutionx-raw',
+    };
+    const comparison = compareDungeonBinaryTileBytes(exported, rawReference);
+
+    expect(comparison.comparable).toBe(false);
+    expect(comparison.identical).toBe(false);
+    expect(comparison.metadataMatch).toBe(true);
+    expect(comparison.formatMatch).toBe(false);
+    expect(comparison.reason).toContain('payload formats differ');
+  });
+
+  it('exports DevilutionX raw Cathedral tile bytes with matching payload metadata', () => {
+    const exported = createDungeonBinaryExport({
+      dungeonType: 'Cathedral',
+      levelNumber: 1,
+      seedText: '2588',
+    }, { format: 'devilutionx' });
+    const reference = readRawFixture('diablo-1-2588.raw');
+
+    expect(exported.header.formatFlags).toBe(DUNGEON_BINARY_FORMAT_FLAGS.DEVILUTIONX_RAW_DUNGEON);
+    expect(tileByteFormatForHeader(exported.header)).toBe(DUNGEON_BINARY_TILE_BYTE_FORMATS.DEVILUTIONX_RAW_DUNGEON);
+    expect(exported.tileBytes).toHaveLength(1600);
+    expect(Array.from(exported.tileBytes)).toEqual(Array.from(reference));
+    expect(exported.tileByteLayout[0].slice(0, 20)).toEqual(Array.from(reference.slice(0, 20)));
+  });
+
+  it('does not silently emit raw DevilutionX bytes for unsupported dungeon families', () => {
+    expect(() => createDungeonBinaryExport({
+      dungeonType: 'Catacombs',
+      levelNumber: 5,
+      seedText: '123456789',
+    }, { format: 'devilutionx' })).toThrow('supports Cathedral only');
   });
 
   it('preserves future header extension bytes when decoding', () => {
@@ -114,3 +187,7 @@ describe('Dungeon binary export', () => {
     expect(exported.header.tileByteCount).toBe(1600);
   });
 });
+
+function readRawFixture(name: string): Uint8Array {
+  return new Uint8Array(readFileSync(resolve('tests/fixtures/devilutionx', name)));
+}

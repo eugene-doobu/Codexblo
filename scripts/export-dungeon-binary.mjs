@@ -37,6 +37,8 @@ try {
     includeObjects: !args.noObjects,
     includeSpawnZones: !args.noSpawnZones,
     includeQuestLocks: !args.noQuestLocks,
+  }, {
+    format: parseExportFormat(args.format),
   });
 
   const bytes = args.raw ? exportResult.tileBytes : exportResult.fileBytes;
@@ -51,6 +53,7 @@ try {
     bytesWritten: bytes.length,
     tileByteCount: exportResult.tileBytes.length,
     checksum: exportResult.checksum,
+    tileByteFormat: args.format ?? 'semantic',
     seed: exportResult.seed,
     dungeonType: exportResult.header.dungeonType,
     levelNumber: exportResult.header.levelNumber,
@@ -81,6 +84,9 @@ function parseArgs(argv) {
         break;
       case '--seed-mode':
         parsed.seedMode = readValue(argv, ++index, arg);
+        break;
+      case '--format':
+        parsed.format = readValue(argv, ++index, arg);
         break;
       case '--out':
         parsed.out = readValue(argv, ++index, arg);
@@ -118,7 +124,8 @@ function readValue(argv, index, label) {
 function defaultOutputPath(exportResult, raw) {
   const suffix = raw ? 'tiles.bin' : 'cdbd';
   const optionFlags = exportResult.header.optionFlags.toString(16).padStart(2, '0');
-  return `dist/dungeons/${exportResult.header.dungeonType.toLowerCase()}-l${exportResult.header.levelNumber}-seed-${exportResult.seed}-opts-${optionFlags}.${suffix}`;
+  const format = exportResult.header.formatFlags === 1 ? 'devilutionx' : 'semantic';
+  return `dist/dungeons/${exportResult.header.dungeonType.toLowerCase()}-l${exportResult.header.levelNumber}-seed-${exportResult.seed}-opts-${optionFlags}-${format}.${suffix}`;
 }
 
 function resolveOutputPath(value) {
@@ -189,6 +196,13 @@ function parseSeedMode(value = 'manual') {
   throw new Error(`Unsupported seed mode: ${value}`);
 }
 
+function parseExportFormat(value = 'semantic') {
+  if (value === 'semantic' || value === 'devilutionx') {
+    return value;
+  }
+  throw new Error(`Unsupported export format: ${value}. Expected semantic or devilutionx.`);
+}
+
 function parseLevelNumber(value) {
   const levelNumber = Number.parseInt(value, 10);
   if (!Number.isInteger(levelNumber) || String(levelNumber) !== String(value).trim() || levelNumber < 0 || levelNumber > 255) {
@@ -218,6 +232,7 @@ Options:
   --level <number>                         Dungeon level number (default by type)
   --seed <text|uint32>                     Manual seed text or uint32 (default: domain request default)
   --seed-mode <manual|random|fixture>      Seed mode (default: manual)
+  --format <semantic|devilutionx>          Payload tile format (default: semantic)
   --out <path>                             Output path (default: dist/dungeons/<type>-l<level>-seed-<seed>-opts-<flags>.cdbd)
   --raw                                    Write only the 40x40 row-major tile payload (1600 bytes)
   --force                                  Overwrite an existing output file

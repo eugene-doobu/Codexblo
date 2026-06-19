@@ -1,4 +1,5 @@
 import { checksumJson, hashStringToUint32 } from '../../core/hash';
+import { generateDevilutionxCathedralRawLevel } from './devilutionx-cathedral-raw';
 import { generateDungeon } from './dungeon-generation-engine';
 import { createGenerationRequest } from './dungeon-generation-request';
 import type { DungeonGenerationRequest, DungeonGenerationResult, DungeonLevel, DungeonType, TileKind } from './dungeon-types';
@@ -7,6 +8,22 @@ export const DUNGEON_BINARY_SCHEMA = 'codexblo-dungeon-binary-v1' as const;
 export const DUNGEON_BINARY_VERSION = 1;
 export const DUNGEON_BINARY_HEADER_SIZE = 32;
 export const DUNGEON_BINARY_MAGIC = [0x43, 0x44, 0x42, 0x44] as const;
+
+export const DUNGEON_BINARY_FORMAT_FLAGS = {
+  SEMANTIC_TILE_KIND: 0x00,
+  DEVILUTIONX_RAW_DUNGEON: 0x01,
+} as const;
+
+export const DUNGEON_BINARY_TILE_BYTE_FORMATS = {
+  SEMANTIC_TILE_KIND: 'codexblo-semantic-tile-kind',
+  DEVILUTIONX_RAW_DUNGEON: 'devilutionx-dungeon-uint8',
+} as const;
+
+export type DungeonBinaryExportFormat = 'semantic' | 'devilutionx';
+
+export interface DungeonBinaryExportOptions {
+  format?: DungeonBinaryExportFormat;
+}
 
 export const DUNGEON_TILE_BYTE_VALUES = {
   void: 0x00,
@@ -54,18 +71,71 @@ export interface DungeonBinaryExport {
   result: DungeonGenerationResult;
 }
 
+export interface DecodedDungeonBinaryFile {
+  schema: typeof DUNGEON_BINARY_SCHEMA;
+  header: DungeonBinaryHeader;
+  tileBytes: Uint8Array;
+  tileByteFormat: DungeonBinaryTileByteFormat;
+  checksum: string;
+}
+
+export interface DungeonBinaryByteMismatch {
+  offset: number;
+  x: number;
+  y: number;
+  candidate: number;
+  reference: number;
+}
+
+export interface DungeonBinaryByteComparison {
+  comparable: boolean;
+  identical: boolean;
+  reason?: string;
+  metadataMatch: boolean;
+  formatMatch: boolean;
+  dimensionsMatch: boolean;
+  seedMatch: boolean;
+  tileByteCountMatch: boolean;
+  mismatchCount: number;
+  mismatches: DungeonBinaryByteMismatch[];
+  candidate: DungeonBinaryComparisonSummary;
+  reference: DungeonBinaryComparisonSummary;
+}
+
+export interface DungeonBinaryComparisonSummary {
+  dungeonType: DungeonType;
+  levelNumber: number;
+  seed: number;
+  width: number;
+  height: number;
+  tileByteCount: number;
+  formatFlags: number;
+  tileByteFormat: DungeonBinaryTileByteFormat;
+  checksum: string;
+}
+
+export type DungeonBinaryTileByteFormat = typeof DUNGEON_BINARY_TILE_BYTE_FORMATS[keyof typeof DUNGEON_BINARY_TILE_BYTE_FORMATS];
+
 const DUNGEON_TYPE_BY_BYTE = Object.fromEntries(
   Object.entries(DUNGEON_TYPE_BYTE_VALUES).map(([type, value]) => [value, type]),
 ) as Record<number, DungeonType>;
 
-export function createDungeonBinaryExport(input: Partial<DungeonGenerationRequest> = {}): DungeonBinaryExport {
-  return createDungeonBinaryExportFromRequest(createGenerationRequest(input));
+export function createDungeonBinaryExport(
+  input: Partial<DungeonGenerationRequest> = {},
+  options: DungeonBinaryExportOptions = {},
+): DungeonBinaryExport {
+  return createDungeonBinaryExportFromRequest(createGenerationRequest(input), options);
 }
 
-export function createDungeonBinaryExportFromRequest(request: DungeonGenerationRequest): DungeonBinaryExport {
+export function createDungeonBinaryExportFromRequest(
+  request: DungeonGenerationRequest,
+  options: DungeonBinaryExportOptions = {},
+): DungeonBinaryExport {
   const result = generateDungeon(request);
-  const tileBytes = serializeDungeonTileBytes(result.level);
-  const header = createDungeonBinaryHeader(result, tileBytes.length);
+  const format = options.format ?? 'semantic';
+  const rawResult = format === 'devilutionx' ? generateDevilutionxRawDungeonTileBytes(result.request, result.seed) : undefined;
+  const tileBytes = rawResult?.tileBytes ?? serializeDungeonTileBytes(result.level);
+  const header = createDungeonBinaryHeader(result, tileBytes.length, format);
   const fileBytes = serializeDungeonBinaryFile(header, tileBytes);
 
   return {
@@ -74,10 +144,109 @@ export function createDungeonBinaryExportFromRequest(request: DungeonGenerationR
     seed: result.seed,
     checksum: checksumJson(Array.from(fileBytes)),
     header,
-    tileByteLayout: serializeDungeonTileByteLayout(result.level),
+    tileByteLayout: rawResult?.tileByteLayout ?? serializeDungeonTileByteLayout(result.level),
     tileBytes,
     fileBytes,
     result,
+  };
+}
+
+export function decodeDungeonBinaryFile(bytes: Uint8Array): DecodedDungeonBinaryFile {
+  const header = decodeDungeonBinaryHeader(bytes);
+  const expectedLength = header.headerSize + header.tileByteCount;
+  if (bytes.length !== expectedLength) {
+    throw new Error(`Dungeon binary file length mismatch: expected ${expectedLength}, received ${bytes.length}.`);
+  }
+  const tileBytes = bytes.slice(header.headerSize);
+  return {
+    schema: DUNGEON_BINARY_SCHEMA,
+    header,
+    tileBytes,
+    tileByteFormat: tileByteFormatForHeader(header),
+    checksum: checksumJson(Array.from(bytes)),
+  };
+}
+
+export function compareDungeonBinaryTileBytes(
+  candidate: DungeonBinaryExport | DecodedDungeonBinaryFile,
+  reference: DungeonBinaryExport | DecodedDungeonBinaryFile,
+  maxMismatches = 200,
+): DungeonBinaryByteComparison {
+  const candidateSummary = summarizeBinary(candidate);
+  const referenceSummary = summarizeBinary(reference);
+  const dimensionsMatch = candidateSummary.width === referenceSummary.width && candidateSummary.height === referenceSummary.height;
+  const seedMatch = candidateSummary.seed === referenceSummary.seed;
+  const tileByteCountMatch = candidateSummary.tileByteCount === referenceSummary.tileByteCount;
+  const metadataMatch = candidateSummary.dungeonType === referenceSummary.dungeonType
+    && candidateSummary.levelNumber === referenceSummary.levelNumber
+    && seedMatch
+    && dimensionsMatch
+    && tileByteCountMatch;
+  const formatMatch = candidateSummary.formatFlags === referenceSummary.formatFlags;
+
+  if (!metadataMatch) {
+    return {
+      comparable: false,
+      identical: false,
+      reason: 'Dungeon binary metadata differs; byte parity would be ambiguous.',
+      metadataMatch,
+      formatMatch,
+      dimensionsMatch,
+      seedMatch,
+      tileByteCountMatch,
+      mismatchCount: 0,
+      mismatches: [],
+      candidate: candidateSummary,
+      reference: referenceSummary,
+    };
+  }
+
+  if (!formatMatch) {
+    return {
+      comparable: false,
+      identical: false,
+      reason: `Dungeon binary payload formats differ: candidate=${candidateSummary.tileByteFormat}, reference=${referenceSummary.tileByteFormat}.`,
+      metadataMatch,
+      formatMatch,
+      dimensionsMatch,
+      seedMatch,
+      tileByteCountMatch,
+      mismatchCount: 0,
+      mismatches: [],
+      candidate: candidateSummary,
+      reference: referenceSummary,
+    };
+  }
+
+  const mismatches: DungeonBinaryByteMismatch[] = [];
+  let mismatchCount = 0;
+  for (let offset = 0; offset < candidate.tileBytes.length; offset += 1) {
+    if (candidate.tileBytes[offset] !== reference.tileBytes[offset]) {
+      mismatchCount += 1;
+      if (mismatches.length < maxMismatches) {
+        mismatches.push({
+          offset,
+          x: offset % candidateSummary.width,
+          y: Math.floor(offset / candidateSummary.width),
+          candidate: candidate.tileBytes[offset],
+          reference: reference.tileBytes[offset],
+        });
+      }
+    }
+  }
+
+  return {
+    comparable: true,
+    identical: mismatchCount === 0,
+    metadataMatch,
+    formatMatch,
+    dimensionsMatch,
+    seedMatch,
+    tileByteCountMatch,
+    mismatchCount,
+    mismatches,
+    candidate: candidateSummary,
+    reference: referenceSummary,
   };
 }
 
@@ -183,7 +352,11 @@ export function tileByteValue(tile: TileKind): number {
   return byte;
 }
 
-function createDungeonBinaryHeader(result: DungeonGenerationResult, tileByteCount: number): DungeonBinaryHeader {
+function createDungeonBinaryHeader(
+  result: DungeonGenerationResult,
+  tileByteCount: number,
+  format: DungeonBinaryExportFormat,
+): DungeonBinaryHeader {
   const level = result.level;
   return {
     magic: 'CDBD',
@@ -193,7 +366,9 @@ function createDungeonBinaryHeader(result: DungeonGenerationResult, tileByteCoun
     dungeonTypeByte: DUNGEON_TYPE_BYTE_VALUES[level.dungeonType],
     levelNumber: assertByteRange(level.levelNumber, 'levelNumber'),
     optionFlags: dungeonOptionFlags(result.request),
-    formatFlags: 0,
+    formatFlags: format === 'devilutionx'
+      ? DUNGEON_BINARY_FORMAT_FLAGS.DEVILUTIONX_RAW_DUNGEON
+      : DUNGEON_BINARY_FORMAT_FLAGS.SEMANTIC_TILE_KIND,
     seed: result.seed >>> 0,
     width: level.width,
     height: level.height,
@@ -201,6 +376,53 @@ function createDungeonBinaryHeader(result: DungeonGenerationResult, tileByteCoun
     tileByteCount,
     reserved: 0,
     extensionBytes: new Uint8Array(0),
+  };
+}
+
+function generateDevilutionxRawDungeonTileBytes(
+  request: DungeonGenerationRequest,
+  seed: number,
+): Pick<DungeonBinaryExport, 'tileBytes' | 'tileByteLayout'> {
+  if (request.dungeonType !== 'Cathedral') {
+    throw new Error(`DevilutionX raw dungeon export currently supports Cathedral only; received ${request.dungeonType}.`);
+  }
+  if (request.levelNumber !== 1 && request.levelNumber !== 2 && request.levelNumber !== 3 && request.levelNumber !== 4) {
+    throw new Error(`DevilutionX Cathedral raw export requires level 1-4; received ${request.levelNumber}.`);
+  }
+
+  const generated = generateDevilutionxCathedralRawLevel(seed, {
+    levelNumber: request.levelNumber,
+    poisonedWaterAvailable: request.includeQuestLocks && request.levelNumber === 2,
+    lightBannerAvailable: false,
+  });
+  return {
+    tileBytes: generated.tileBytes,
+    tileByteLayout: generated.tileLayout,
+  };
+}
+
+export function tileByteFormatForHeader(header: DungeonBinaryHeader): DungeonBinaryTileByteFormat {
+  switch (header.formatFlags) {
+    case DUNGEON_BINARY_FORMAT_FLAGS.SEMANTIC_TILE_KIND:
+      return DUNGEON_BINARY_TILE_BYTE_FORMATS.SEMANTIC_TILE_KIND;
+    case DUNGEON_BINARY_FORMAT_FLAGS.DEVILUTIONX_RAW_DUNGEON:
+      return DUNGEON_BINARY_TILE_BYTE_FORMATS.DEVILUTIONX_RAW_DUNGEON;
+    default:
+      throw new Error(`Unsupported dungeon binary format flags: ${header.formatFlags}.`);
+  }
+}
+
+function summarizeBinary(binary: DungeonBinaryExport | DecodedDungeonBinaryFile): DungeonBinaryComparisonSummary {
+  return {
+    dungeonType: binary.header.dungeonType,
+    levelNumber: binary.header.levelNumber,
+    seed: binary.header.seed,
+    width: binary.header.width,
+    height: binary.header.height,
+    tileByteCount: binary.header.tileByteCount,
+    formatFlags: binary.header.formatFlags,
+    tileByteFormat: tileByteFormatForHeader(binary.header),
+    checksum: binary.checksum,
   };
 }
 

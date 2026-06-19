@@ -64,6 +64,9 @@ export interface DungeonMinisetPlacement {
     height: number;
   };
   tries: number;
+  searchStart?: GridPoint;
+  selectedAttempt?: number;
+  matchProfile?: string;
 }
 
 export type DungeonObjectPresetId = 'SHRINE' | 'BOOKCASE' | 'BARREL_CLUSTER' | 'SARCOPHAGUS' | 'WEAPON_RACK';
@@ -115,6 +118,39 @@ export interface CathedralTileizationMetadata {
   dividingWalls: readonly CathedralDividingWallMetadata[];
 }
 
+export type CathedralStageTraceName =
+  | 'layout-mask'
+  | 'make-dmt-semantic'
+  | 'fill-chambers-semantic'
+  | 'add-walls-semantic'
+  | 'place-minisets-semantic'
+  | 'tileize-render';
+
+export interface CathedralStageTraceEntry {
+  stage: CathedralStageTraceName;
+  checksum: string;
+  maskTileCount?: number;
+  passableTileCount?: number;
+  roomCount?: number;
+  sideRoomCount?: number;
+}
+
+export interface CathedralGenerationTrace {
+  sourceAlgorithm: 'drlg-l1-compatible-stage-order';
+  sideRoomSearch: {
+    attemptsPerSide: 20;
+    sizes: readonly [2, 4, 6];
+    verticalLeadingProbeUsesSwappedSizeQuirk: true;
+  };
+  minisetSearch: {
+    tries: 1600;
+    startBoundsExcludeLastFitColumnAndRow: true;
+    drlg1QuirkMinimumCoordinate: 13;
+    placementOrder: readonly DungeonMinisetId[];
+  };
+  stages: readonly CathedralStageTraceEntry[];
+}
+
 export interface CathedralGenerationMetadata {
   familyId: 'Cathedral';
   generatorKind: 'chamber-recursive';
@@ -135,6 +171,7 @@ export interface CathedralGenerationMetadata {
   tileization: CathedralTileizationMetadata;
   minisetPlacements: readonly DungeonMinisetPlacement[];
   objectPresetProfile: CathedralObjectPresetProfile;
+  trace: CathedralGenerationTrace;
 }
 
 export type CatacombsHallDirection = 'Up' | 'Right' | 'Down' | 'Left';

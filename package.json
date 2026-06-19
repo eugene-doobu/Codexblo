@@ -12,6 +12,7 @@
     "export:dungeon": "node scripts/export-dungeon-binary.mjs",
     "generate:assets": "node scripts/generate-dungeon-assets.mjs",
     "compare:dungeon": "node scripts/compare-dungeon-snapshot.mjs",
+    "compare:dungeon-binary": "node scripts/compare-dungeon-binary.mjs",
     "check": "npm run generate:assets && npm test && npm run build"
   },
   "dependencies": {

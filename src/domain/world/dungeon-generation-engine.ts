@@ -45,10 +45,18 @@ function gameplayChecksumInput(level: Omit<DungeonLevel, 'checksum'>): unknown {
     return { ...logicalLevel, generation };
   }
 
-  const { tileization: _tileization, ...logicalGeneration } = generation;
+  const {
+    tileization: _tileization,
+    trace: _trace,
+    minisetPlacements,
+    ...logicalGeneration
+  } = generation;
   return {
     ...logicalLevel,
-    generation: logicalGeneration,
+    generation: {
+      ...logicalGeneration,
+      minisetPlacements: minisetPlacements.map(({ searchStart: _searchStart, selectedAttempt: _selectedAttempt, matchProfile: _matchProfile, ...placement }) => placement),
+    },
   };
 }
 

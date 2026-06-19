@@ -25,6 +25,15 @@ const RENDER_TILE_TO_SYMBOL: Record<TileKind | CathedralStructureTileKind, strin
   cathedralDividingWall: '=',
 };
 
+export interface DungeonComparisonSnapshotOptions {
+  includeDiagnostics?: boolean;
+}
+
+export interface DungeonComparisonDiagnostics {
+  stageChecksums?: Record<string, string>;
+  minisetOrder?: string[];
+}
+
 export interface DungeonComparisonSnapshot {
   schema: typeof DUNGEON_COMPARISON_SCHEMA;
   seed: number;
@@ -45,6 +54,7 @@ export interface DungeonComparisonSnapshot {
   legend: Record<TileKind, string>;
   renderTileRows?: string[];
   renderLegend?: Record<string, string>;
+  diagnostics?: DungeonComparisonDiagnostics;
   generation: {
     familyId: string;
     generatorKind: string;
@@ -83,7 +93,12 @@ export interface DungeonSnapshotComparison {
   referenceHistogram: Record<string, number>;
 }
 
-export function createDungeonComparisonSnapshot(result: DungeonGenerationResult): DungeonComparisonSnapshot {
+export function createDungeonComparisonSnapshot(
+  result: DungeonGenerationResult,
+  options: DungeonComparisonSnapshotOptions = {},
+): DungeonComparisonSnapshot {
+  const diagnostics = options.includeDiagnostics ? createDungeonComparisonDiagnostics(result) : undefined;
+
   return {
     schema: DUNGEON_COMPARISON_SCHEMA,
     seed: result.seed,
@@ -130,6 +145,18 @@ export function createDungeonComparisonSnapshot(result: DungeonGenerationResult)
       objectCount: result.level.objects?.length,
       roomNodeCapacity: result.level.generation.familyId === 'Catacombs' ? result.level.generation.roomNodeCapacity : undefined,
     },
+    ...(diagnostics ? { diagnostics } : {}),
+  };
+}
+
+function createDungeonComparisonDiagnostics(result: DungeonGenerationResult): DungeonComparisonDiagnostics | undefined {
+  if (result.level.generation.familyId !== 'Cathedral') {
+    return undefined;
+  }
+
+  return {
+    stageChecksums: Object.fromEntries(result.level.generation.trace.stages.map((stage) => [stage.stage, stage.checksum])),
+    minisetOrder: [...result.level.generation.trace.minisetSearch.placementOrder],
   };
 }
 

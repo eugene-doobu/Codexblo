@@ -13,7 +13,7 @@ import { compareDungeonSnapshots, createDungeonComparisonSnapshot } from '../src
 import { validateDungeon } from '../src/domain/world/generation/dungeon-validation';
 import { rectsOverlap, type GridRect } from '../src/core/grid';
 
-const cathedralV2Checksum = 'da772d21';
+const cathedralV2Checksum = '95743d8e';
 const catacombsBspChecksum = '919ab6df';
 const cavesCellularChecksum = 'fb139935';
 const hellQuadrantMirrorChecksum = '70d5d85a';
@@ -98,13 +98,58 @@ describe('Cathedral dungeon generation', () => {
     }
     expect(generation.minisetPlacements).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ id: 'STAIRSUP', size: { width: 4, height: 4 }, tries: 1600 }),
-        expect.objectContaining({ id: 'STAIRSDOWN', size: { width: 4, height: 3 }, tries: 1600 }),
+        expect.objectContaining({
+          id: 'STAIRSUP',
+          size: { width: 4, height: 4 },
+          tries: 1600,
+          matchProfile: 'drlg1-scan-wall-backed-up-stair',
+        }),
+        expect.objectContaining({
+          id: 'STAIRSDOWN',
+          size: { width: 4, height: 3 },
+          tries: 1600,
+          matchProfile: 'drlg1-scan-floor-down-stair',
+        }),
       ]),
     );
     const lampCount = generation.minisetPlacements.filter((placement) => placement.id === 'LAMPS').length;
     expect(lampCount).toBeGreaterThanOrEqual(5);
     expect(lampCount).toBeLessThanOrEqual(9);
+    expect(generation.trace.sourceAlgorithm).toBe('drlg-l1-compatible-stage-order');
+    expect(generation.trace.sideRoomSearch).toEqual({
+      attemptsPerSide: 20,
+      sizes: [2, 4, 6],
+      verticalLeadingProbeUsesSwappedSizeQuirk: true,
+    });
+    expect(generation.trace.minisetSearch).toEqual({
+      tries: 1600,
+      startBoundsExcludeLastFitColumnAndRow: true,
+      drlg1QuirkMinimumCoordinate: 13,
+      placementOrder: ['STAIRSUP', 'STAIRSDOWN', 'LAMPS'],
+    });
+    expect(generation.trace.stages.map((stage) => stage.stage)).toEqual([
+      'layout-mask',
+      'make-dmt-semantic',
+      'fill-chambers-semantic',
+      'add-walls-semantic',
+      'place-minisets-semantic',
+      'tileize-render',
+    ]);
+    expect(generation.trace.stages.find((stage) => stage.stage === 'tileize-render')?.passableTileCount)
+      .toBe(result.level.tiles.flat().filter(isPassable).length);
+    expect(generation.trace.stages[0]).toEqual(expect.objectContaining({
+      maskTileCount: generation.maskTileCount,
+      roomCount: result.level.rooms.length,
+      sideRoomCount: generation.sideRooms.length,
+    }));
+    for (const placement of generation.minisetPlacements) {
+      expect(placement.searchStart).toBeDefined();
+      expect(placement.selectedAttempt).toBeGreaterThanOrEqual(1);
+      expect(placement.selectedAttempt).toBeLessThanOrEqual(placement.tries + 1);
+      expect(placement.matchProfile).not.toContain('fallback');
+      expect(placement.position.x).toBeGreaterThanOrEqual(generation.trace.minisetSearch.drlg1QuirkMinimumCoordinate);
+      expect(placement.position.y).toBeGreaterThanOrEqual(generation.trace.minisetSearch.drlg1QuirkMinimumCoordinate);
+    }
   });
 
   it('tileizes Cathedral rooms into renderable structure tile ids', () => {
@@ -153,19 +198,17 @@ describe('Cathedral dungeon generation', () => {
     expect(generation.objectPresetProfile.enabled).toBe(true);
     expect(generation.objectPresetProfile.placementOrder).toEqual(['SHRINE', 'BOOKCASE', 'BARREL_CLUSTER', 'SARCOPHAGUS', 'WEAPON_RACK']);
     expect(result.validation.metrics.objectCount).toBe(objects.length);
-    expect(objects).toHaveLength(12);
+    expect(objects).toHaveLength(10);
     expect(objects.map((object) => object.presetId)).toEqual([
+      'SHRINE',
       'SHRINE',
       'BOOKCASE',
       'BOOKCASE',
       'BARREL_CLUSTER',
       'BARREL_CLUSTER',
       'BARREL_CLUSTER',
-      'BARREL_CLUSTER',
-      'BARREL_CLUSTER',
-      'BARREL_CLUSTER',
       'SARCOPHAGUS',
-      'SARCOPHAGUS',
+      'WEAPON_RACK',
       'WEAPON_RACK',
     ]);
     expect(new Set(objects.map((object) => object.category))).toEqual(new Set(['shrine', 'lore', 'container', 'tomb', 'rack']));
@@ -267,13 +310,14 @@ describe('Cathedral dungeon generation', () => {
     const result = generateDungeon(createGenerationRequest({ dungeonType: 'Cathedral', levelNumber: 1, seedText: '123456789' }));
 
     expect(result.seed).toBe(123456789);
-    expect(result.level.checksum).toBe('80d79b82');
+    expect(result.level.checksum).toBe('f3087102');
     expect(result.validation.ok).toBe(true);
   });
 
   it('creates comparable grid snapshots and reports cell-level differences', () => {
     const result = generateDungeon(baseRequest);
     const snapshot = createDungeonComparisonSnapshot(result);
+    const diagnosticSnapshot = createDungeonComparisonSnapshot(result, { includeDiagnostics: true });
     const renderRows = snapshot.renderTileRows ?? [];
     const copy = { width: snapshot.grid.width, height: snapshot.grid.height, rows: [...snapshot.tileRows], renderRows: [...renderRows], checksum: snapshot.checksum };
     const changedRows = [...snapshot.tileRows];
@@ -284,6 +328,13 @@ describe('Cathedral dungeon generation', () => {
     expect(snapshot.requestOptions.includeSpawnZones).toBe(true);
     expect(snapshot.requestOptions.includeQuestLocks).toBe(true);
     expect(snapshot.generation.objectCount).toBe(result.level.objects?.length);
+    expect(snapshot.diagnostics).toBeUndefined();
+    expect(diagnosticSnapshot.diagnostics?.stageChecksums).toEqual(Object.fromEntries(
+      result.level.generation.familyId === 'Cathedral'
+        ? result.level.generation.trace.stages.map((stage) => [stage.stage, stage.checksum])
+        : [],
+    ));
+    expect(diagnosticSnapshot.diagnostics?.minisetOrder).toEqual(['STAIRSUP', 'STAIRSDOWN', 'LAMPS']);
     expect(snapshot.renderTileRows).toHaveLength(snapshot.grid.height);
     expect(countSnapshotSymbols(snapshot.renderTileRows ?? [], ['V', 'H', 'C', 'P', '=', 'A', 'a'])).toBeGreaterThan(0);
     const comparison = compareDungeonSnapshots(snapshot, { width: snapshot.grid.width, height: snapshot.grid.height, rows: changedRows, renderRows });

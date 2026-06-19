@@ -1,8 +1,14 @@
 export class GameRng {
+  private readonly initialSeed: number;
   private state: number;
 
   constructor(seed: number) {
-    this.state = seed >>> 0;
+    this.initialSeed = seed >>> 0;
+    this.state = this.initialSeed;
+  }
+
+  getInitialSeed(): number {
+    return this.initialSeed;
   }
 
   getState(): number {
@@ -28,7 +34,7 @@ export class GameRng {
     }
     const value = this.advanceRndSeed();
     if (boundExclusive <= 0x7fff) {
-      return Math.floor(value / 0x10000) % boundExclusive;
+      return (value >> 16) % boundExclusive;
     }
     return value % boundExclusive;
   }
@@ -37,10 +43,20 @@ export class GameRng {
     return this.generateRnd(frequency) === 0;
   }
 
+  randomIntLessThan(boundExclusive: number): number {
+    return Math.max(this.generateRnd(boundExclusive), 0);
+  }
+
+  discardRandomValues(count: number): void {
+    for (let index = 0; index < count; index += 1) {
+      this.nextUint32();
+    }
+  }
+
   private advanceRndSeed(): number {
     const signed = this.nextUint32() | 0;
     if (signed === -2147483648) {
-      return 2147483648;
+      return -2147483648;
     }
     return Math.abs(signed);
   }
