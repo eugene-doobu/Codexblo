@@ -12,6 +12,7 @@ const packSpecs = [
     label: 'Cathedral',
     dungeonTypes: ['Cathedral'],
     includeStructureTiles: true,
+    includeObjectAssets: true,
     sourcePath: join(root, 'resources/source/cathedral-palette.json'),
     outDir: join(root, 'public/assets/cathedral'),
   },
@@ -83,6 +84,7 @@ function generatePackAssets(spec) {
   const { width, height } = source.tileSize;
   assertTileSize(width, height, spec.label);
   const tileSpecs = createTileSpecs(width, height, spec.label, spec.includeStructureTiles === true);
+  const objectSpecs = spec.includeObjectAssets === true ? createObjectSpecs(spec.label) : {};
   const assets = [];
 
   for (const [key, tileSpec] of Object.entries(tileSpecs)) {
@@ -108,6 +110,25 @@ function generatePackAssets(spec) {
       path: `/assets/${spec.keyPrefix}/${tileSpec.file}`,
       width,
       height,
+    });
+  }
+
+  for (const [presetId, objectSpec] of Object.entries(objectSpecs)) {
+    const filePath = join(spec.outDir, objectSpec.file);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${objectSpec.width}" height="${objectSpec.height}" viewBox="0 0 ${objectSpec.width} ${objectSpec.height}" role="img" aria-label="${objectSpec.title}">
+    <title>${objectSpec.title}</title>
+    <rect width="${objectSpec.width}" height="${objectSpec.height}" fill="none"/>
+    ${objectSpec.body()}
+  </svg>
+`;
+    writeFileSync(filePath, cleanSvg(svg), 'utf8');
+    assets.push({
+      key: `${spec.keyPrefix}.object.${presetId}`,
+      kind: 'image',
+      semantic: `object.${presetId}`,
+      path: `/assets/${spec.keyPrefix}/${objectSpec.file}`,
+      width: objectSpec.width,
+      height: objectSpec.height,
     });
   }
 
@@ -256,6 +277,111 @@ function createTileSpecs(width, height, label, includeStructureTiles) {
       body: structureSprite('dividingWall'),
     },
   };
+}
+
+function createObjectSpecs(label) {
+  const width = 72;
+  const height = 96;
+
+  return {
+    SHRINE: {
+      file: 'object-shrine.svg',
+      title: `${label} shrine object`,
+      width,
+      height,
+      body: () => `
+      <ellipse data-layer="object-shadow" cx="36" cy="73" rx="29" ry="11" fill="#020304" opacity="0.52"/>
+      ${isoSlabPath('object-base', 36, 70, 23, 11, 10, '#6f7681', '#333944', '#4a515d', '#151922')}
+      ${isoSlabPath('object-plinth', 36, 52, 15, 8, 11, '#858c98', '#434a55', '#5e6672', '#171b24')}
+      <rect data-layer="object-column" x="29" y="20" width="14" height="31" fill="#8f96a3" stroke="#141821" stroke-width="2"/>
+      <path data-layer="object-cap" d="M 20 51 L 52 51 L 36 37 Z" fill="#5b626e" stroke="#141821" stroke-width="2"/>
+      <circle data-layer="object-glow" cx="36" cy="15" r="12" fill="#f6d365" opacity="0.28"/>
+      <circle data-layer="object-flame" cx="36" cy="15" r="4" fill="#fff0a8" opacity="0.8"/>`,
+    },
+    BOOKCASE: {
+      file: 'object-bookcase.svg',
+      title: `${label} bookcase object`,
+      width,
+      height,
+      body: () => `
+      <ellipse data-layer="object-shadow" cx="36" cy="76" rx="22" ry="8" fill="#020304" opacity="0.54"/>
+      <path data-layer="object-side" d="M 22 24 L 50 31 L 50 72 L 22 64 Z" fill="#26150d" stroke="#120b08" stroke-width="2"/>
+      <path data-layer="object-front" d="M 24 19 L 52 26 L 52 68 L 24 61 Z" fill="#5b321d" stroke="#120b08" stroke-width="2"/>
+      <path data-layer="object-top" d="M 24 19 L 36 13 L 64 20 L 52 26 Z" fill="#6b3b22" stroke="#120b08" stroke-width="2"/>
+      <path d="M 26 32 L 50 38 M 26 44 L 50 50 M 26 56 L 50 62" stroke="#2a160f" stroke-width="2"/>
+      <path data-layer="object-books" d="M 30 26 L 34 27 L 34 57 L 30 56 Z M 36 28 L 40 29 L 40 59 L 36 58 Z M 42 29 L 46 30 L 46 61 L 42 60 Z" fill="#8a3f22"/>
+      <path d="M 34 27 L 38 28 L 38 53 L 34 52 Z" fill="#3f5f8a"/>
+      <path d="M 46 30 L 50 31 L 50 58 L 46 57 Z" fill="#8a7622"/>`,
+    },
+    BARREL_CLUSTER: {
+      file: 'object-barrel-cluster.svg',
+      title: `${label} barrel cluster object`,
+      width,
+      height,
+      body: () => `
+      <ellipse data-layer="object-shadow" cx="36" cy="75" rx="30" ry="11" fill="#020304" opacity="0.52"/>
+      ${barrelSvg(23, 54, 0.92)}
+      ${barrelSvg(48, 55, 0.9)}
+      ${barrelSvg(36, 44, 1)}`,
+    },
+    SARCOPHAGUS: {
+      file: 'object-sarcophagus.svg',
+      title: `${label} sarcophagus object`,
+      width,
+      height,
+      body: () => `
+      <ellipse data-layer="object-shadow" cx="36" cy="75" rx="34" ry="12" fill="#020304" opacity="0.5"/>
+      ${isoSlabPath('object-stone-coffin', 36, 68, 31, 14, 9, '#787060', '#3f3a33', '#575044', '#17150f')}
+      <path data-layer="object-lid" d="M 36 43 L 64 58 L 36 73 L 8 58 Z" fill="none" stroke="#2b261e" stroke-width="2" opacity="0.7"/>
+      <path d="M 18 58 L 54 58 M 36 48 L 36 68" stroke="#b0a080" stroke-width="2" opacity="0.42"/>`,
+    },
+    WEAPON_RACK: {
+      file: 'object-weapon-rack.svg',
+      title: `${label} weapon rack object`,
+      width,
+      height,
+      body: () => `
+      <ellipse data-layer="object-shadow" cx="36" cy="75" rx="22" ry="8" fill="#020304" opacity="0.5"/>
+      <path data-layer="object-rack" d="M 19 74 L 36 29 L 53 74 M 17 52 L 55 52" fill="none" stroke="#3b2415" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path data-layer="object-blades" d="M 26 26 L 34 63 M 47 27 L 39 63" fill="none" stroke="#a9b2bd" stroke-width="2" stroke-linecap="round"/>
+      <path d="M 22 26 L 30 26 M 43 27 L 51 27" stroke="#d2dae2" stroke-width="2" stroke-linecap="round"/>
+      <ellipse cx="36" cy="76" rx="17" ry="5" fill="#442515"/>`,
+    },
+  };
+}
+
+function isoSlabPath(layer, x, y, halfWidth, halfHeight, slabHeight, top, left, right, strokeColor) {
+  const topPoints = diamondPoints(x, y - slabHeight, halfWidth, halfHeight);
+  const bottomPoints = diamondPoints(x, y, halfWidth, halfHeight);
+  return `
+      <path data-layer="${layer}-left" d="${polygonPath([topPoints[3], topPoints[2], bottomPoints[2], bottomPoints[3]])}" fill="${left}" stroke="${strokeColor}" stroke-width="2"/>
+      <path data-layer="${layer}-right" d="${polygonPath([topPoints[1], topPoints[2], bottomPoints[2], bottomPoints[1]])}" fill="${right}" stroke="${strokeColor}" stroke-width="2"/>
+      <path data-layer="${layer}-top" d="${polygonPath(topPoints)}" fill="${top}" stroke="${strokeColor}" stroke-width="2"/>`;
+}
+
+function barrelSvg(cx, cy, scale) {
+  const rx = 9 * scale;
+  const ry = 4 * scale;
+  const bodyWidth = 18 * scale;
+  const bodyHeight = 24 * scale;
+  return `
+      <ellipse cx="${cx}" cy="${cy + 15 * scale}" rx="${10 * scale}" ry="${4 * scale}" fill="#2c160b" opacity="0.72"/>
+      <rect x="${cx - bodyWidth / 2}" y="${cy - 6 * scale}" width="${bodyWidth}" height="${bodyHeight}" rx="${5 * scale}" fill="#7b421e" stroke="#2a1409" stroke-width="2"/>
+      <ellipse data-layer="object-barrel-top" cx="${cx}" cy="${cy - 6 * scale}" rx="${rx}" ry="${ry}" fill="#a7622a" stroke="#2a1409" stroke-width="2"/>
+      <path d="M ${cx - 8 * scale} ${cy + 1 * scale} L ${cx + 8 * scale} ${cy + 1 * scale} M ${cx - 8 * scale} ${cy + 10 * scale} L ${cx + 8 * scale} ${cy + 10 * scale}" stroke="#1e130d" stroke-width="2" opacity="0.74"/>`;
+}
+
+function diamondPoints(x, y, halfWidth, halfHeight) {
+  return [
+    [x, y - halfHeight],
+    [x + halfWidth, y],
+    [x, y + halfHeight],
+    [x - halfWidth, y],
+  ];
+}
+
+function polygonPath(points) {
+  return `${points.map(([x, y], index) => `${index === 0 ? 'M' : 'L'} ${x} ${y}`).join(' ')} Z`;
 }
 
 function removeStaleStructureSvgAssets(outDir) {
@@ -438,6 +564,10 @@ function applyStoneTexture(pixels, width, height, seed) {
       }
     }
   }
+}
+
+function cleanSvg(svg) {
+  return svg.split('\n').map((line) => line.trimEnd()).join('\n');
 }
 
 function assertTileSize(width, height, label) {

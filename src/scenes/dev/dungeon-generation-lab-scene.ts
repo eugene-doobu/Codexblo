@@ -4,20 +4,16 @@ import {
   type DungeonGenerationRequest,
   type DungeonGenerationResult,
 } from '../../domain/world/dungeon-generator';
-import {
-  createDungeonBinaryExportFromRequest,
-  type DungeonBinaryExportFormat,
-} from '../../domain/world/dungeon-binary-export';
 import { createDungeonComparisonSnapshot, type DungeonComparisonSnapshot } from '../../domain/world/dungeon-comparison';
 import { DungeonDebugRenderer, type DebugOverlayOptions, type DungeonRenderSnapshot } from '../../presentation/dev/dungeon-debug-overlay';
-import { ISO_TILE_FOOTPRINT, flatGridBounds, toIso, type IsoBounds } from '../../presentation/dev/isometric-projection';
+import { ISO_TILE_FOOTPRINT, isoGridBounds, toIso, type IsoBounds } from '../../presentation/dev/isometric-projection';
 import { requestFromLocation } from '../../runtime/route';
 import { buildDungeonLabRequest } from './dungeon-lab-request';
+import { rawTileValuesForRequest } from './dungeon-raw-tile-values';
 
 const CAMERA_VIEW_PADDING = 96;
 const MIN_CAMERA_ZOOM = 0.22;
 const MAX_CAMERA_ZOOM = 1.25;
-const RAW_DUNGEON_EXPORT_FORMAT = ('devil' + 'utionx') as DungeonBinaryExportFormat;
 
 export class DungeonGenerationLabScene extends Phaser.Scene {
   private dungeonRenderer?: DungeonDebugRenderer;
@@ -51,7 +47,7 @@ export class DungeonGenerationLabScene extends Phaser.Scene {
   private fitCamera(result: DungeonGenerationResult): DungeonCameraSnapshot {
     const camera = this.cameras.main;
     const gridSize = { width: result.level.width, height: result.level.height };
-    const contentBounds = flatGridBounds(gridSize, CAMERA_VIEW_PADDING);
+    const contentBounds = isoGridBounds(gridSize, CAMERA_VIEW_PADDING);
     const zoom = cameraFitZoom(camera.width, camera.height, contentBounds);
     const cameraBounds = expandBoundsForViewport(contentBounds, camera.width / zoom, camera.height / zoom);
     const scrollX = contentBounds.centerX - camera.width / (2 * zoom);
@@ -259,12 +255,12 @@ function createControls(onGenerate: (request: DungeonGenerationRequest, options:
         <label for="seed-text">Seed</label>
         <input id="seed-text" value="cathedral-lab-default" />
       </div>
-      <label class="lab-check"><input id="show-raw-tiles" type="checkbox" checked /> Raw tile IDs</label>
+      <label class="lab-check"><input id="show-raw-tiles" type="checkbox" /> Raw tile ID overlay</label>
       <label class="lab-check"><input id="show-grid" type="checkbox" /> Grid</label>
       <label class="lab-check"><input id="show-collision" type="checkbox" /> Collision</label>
       <label class="lab-check"><input id="show-connectivity" type="checkbox" /> Connectivity</label>
       <label class="lab-check"><input id="show-zones" type="checkbox" /> Zones</label>
-      <label class="lab-check"><input id="show-objects" type="checkbox" /> Objects</label>
+      <label class="lab-check"><input id="show-objects" type="checkbox" /> Object footprints</label>
       <div class="lab-row">
         <button id="generate-button" type="button">Generate</button>
         <button id="randomize-button" type="button">Randomize</button>
@@ -376,20 +372,6 @@ function buildOptions(fields: ControlFields): DebugOverlayOptions {
     showZones: fields.showZones.checked,
     showObjects: fields.showObjects.checked,
   };
-}
-
-function rawTileValuesForRequest(request: DungeonGenerationRequest): readonly (readonly number[])[] | undefined {
-  if (request.dungeonType !== 'Cathedral') {
-    return undefined;
-  }
-
-  try {
-    return createDungeonBinaryExportFromRequest(request, {
-      format: RAW_DUNGEON_EXPORT_FORMAT,
-    }).tileByteLayout;
-  } catch {
-    return undefined;
-  }
 }
 
 function statusText(result: DungeonGenerationResult): string {

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { CATHEDRAL_STRUCTURE_TILE_KINDS } from '../src/domain/world/cathedral-render-tiles';
 import {
+  devilutionxCathedralRawBlocksObjectPlacement,
+  generateDevilutionxCathedralRawLevel,
+} from '../src/domain/world/devilutionx-cathedral-raw';
+import {
   DUNGEON_RESOURCE_PACK_IDS,
   DUNGEON_GENERATOR_VERSION,
   createGenerationRequest,
@@ -13,7 +17,7 @@ import { compareDungeonSnapshots, createDungeonComparisonSnapshot } from '../src
 import { validateDungeon } from '../src/domain/world/generation/dungeon-validation';
 import { rectsOverlap, type GridRect } from '../src/core/grid';
 
-const cathedralV2Checksum = 'da772d21';
+const cathedralV2Checksum = 'f2570891';
 const catacombsBspChecksum = '919ab6df';
 const cavesCellularChecksum = 'fb139935';
 const hellQuadrantMirrorChecksum = '70d5d85a';
@@ -207,7 +211,7 @@ describe('Cathedral dungeon generation', () => {
     expect(generation.objectPresetProfile.enabled).toBe(true);
     expect(generation.objectPresetProfile.placementOrder).toEqual(['SHRINE', 'BOOKCASE', 'BARREL_CLUSTER', 'SARCOPHAGUS', 'WEAPON_RACK']);
     expect(result.validation.metrics.objectCount).toBe(objects.length);
-    expect(objects).toHaveLength(12);
+    expect(objects).toHaveLength(10);
     expect(objects.map((object) => object.presetId)).toEqual([
       'SHRINE',
       'BOOKCASE',
@@ -216,10 +220,8 @@ describe('Cathedral dungeon generation', () => {
       'BARREL_CLUSTER',
       'BARREL_CLUSTER',
       'BARREL_CLUSTER',
-      'BARREL_CLUSTER',
-      'BARREL_CLUSTER',
       'SARCOPHAGUS',
-      'SARCOPHAGUS',
+      'WEAPON_RACK',
       'WEAPON_RACK',
     ]);
     expect(new Set(objects.map((object) => object.category))).toEqual(new Set(['shrine', 'lore', 'container', 'tomb', 'rack']));
@@ -232,6 +234,7 @@ describe('Cathedral dungeon generation', () => {
       height: placement.size.height,
     }));
     const protectedZones = result.level.zones.filter((zone) => zone.kind !== 'object').map((zone) => zone.rect);
+    const rawTileLayout = rawCathedralTileLayoutForResult(result);
     for (const object of objects) {
       const footprint = {
         x: object.position.x,
@@ -242,11 +245,36 @@ describe('Cathedral dungeon generation', () => {
       expect(object.blocksMovement).toBe(true);
       expect(object.tries).toBe(1600);
       expect(footprintContainsOnlyPassable(result, footprint)).toBe(true);
+      expect(footprintAvoidsCathedralRenderStructures(result, footprint)).toBe(true);
+      expect(footprintAvoidsRawCathedralStructures(rawTileLayout, footprint)).toBe(true);
       expect(occupied.some((existing) => rectsOverlap(existing, footprint))).toBe(false);
       expect(minisetFootprints.some((existing) => rectsOverlap(existing, footprint))).toBe(false);
       expect(protectedZones.some((existing) => rectsOverlap(existing, footprint))).toBe(false);
       occupied.push(footprint);
     }
+  });
+
+  it('keeps the lab-default Cathedral objects off raw-rendered wall and arch cells', () => {
+    const result = generateDungeon(createGenerationRequest({
+      dungeonType: 'Cathedral',
+      levelNumber: 1,
+      seedMode: 'manual',
+      seedText: 'cathedral-lab-default',
+    }));
+    const rawTileLayout = rawCathedralTileLayoutForResult(result);
+    const rawConflicts = (result.level.objects ?? []).flatMap((object) => {
+      const footprint = {
+        x: object.position.x,
+        y: object.position.y,
+        width: object.size.width,
+        height: object.size.height,
+      };
+      return rawCathedralStructureConflicts(rawTileLayout, footprint).map((conflict) => `${object.id}@${conflict.x},${conflict.y}=${conflict.tileId}`);
+    });
+
+    expect(result.validation.ok).toBe(true);
+    expect(result.level.objects?.length).toBeGreaterThan(0);
+    expect(rawConflicts).toEqual([]);
   });
 
   it('can disable Cathedral object preset placement from the lab request', () => {
@@ -321,7 +349,7 @@ describe('Cathedral dungeon generation', () => {
     const result = generateDungeon(createGenerationRequest({ dungeonType: 'Cathedral', levelNumber: 1, seedText: '123456789' }));
 
     expect(result.seed).toBe(123456789);
-    expect(result.level.checksum).toBe('80d79b82');
+    expect(result.level.checksum).toBe('01a64902');
     expect(result.validation.ok).toBe(true);
   });
 
@@ -829,6 +857,56 @@ function footprintContainsOnlyPassable(result: DungeonGenerationResult, footprin
     }
   }
   return true;
+}
+
+function footprintAvoidsCathedralRenderStructures(result: DungeonGenerationResult, footprint: GridRect): boolean {
+  const structureTileKinds = new Set<string>(CATHEDRAL_STRUCTURE_TILE_KINDS);
+  for (let y = footprint.y; y < footprint.y + footprint.height; y += 1) {
+    for (let x = footprint.x; x < footprint.x + footprint.width; x += 1) {
+      if (structureTileKinds.has(result.level.renderTiles?.[y]?.[x] ?? '')) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function rawCathedralTileLayoutForResult(result: DungeonGenerationResult): number[][] {
+  if (!isRawCathedralLevel(result.request.levelNumber)) {
+    throw new Error(`Expected raw Cathedral level 1-4; got ${result.request.levelNumber}.`);
+  }
+  return generateDevilutionxCathedralRawLevel(result.seed, {
+    levelNumber: result.request.levelNumber,
+    poisonedWaterAvailable: result.request.includeQuestLocks && result.request.levelNumber === 2,
+    lightBannerAvailable: false,
+  }).tileLayout;
+}
+
+function isRawCathedralLevel(levelNumber: number): levelNumber is 1 | 2 | 3 | 4 {
+  return levelNumber === 1 || levelNumber === 2 || levelNumber === 3 || levelNumber === 4;
+}
+
+function footprintAvoidsRawCathedralStructures(rawTileLayout: readonly (readonly number[])[], footprint: GridRect): boolean {
+  return rawCathedralStructureConflicts(rawTileLayout, footprint).length === 0;
+}
+
+function rawCathedralStructureConflicts(rawTileLayout: readonly (readonly number[])[], footprint: GridRect): GridPointWithTileId[] {
+  const conflicts: GridPointWithTileId[] = [];
+  for (let y = footprint.y; y < footprint.y + footprint.height; y += 1) {
+    for (let x = footprint.x; x < footprint.x + footprint.width; x += 1) {
+      const tileId = rawTileLayout[y]?.[x];
+      if (tileId !== undefined && devilutionxCathedralRawBlocksObjectPlacement(tileId)) {
+        conflicts.push({ x, y, tileId });
+      }
+    }
+  }
+  return conflicts;
+}
+
+interface GridPointWithTileId {
+  x: number;
+  y: number;
+  tileId: number;
 }
 
 function countSnapshotSymbols(rows: readonly string[], symbols: readonly string[]): number {

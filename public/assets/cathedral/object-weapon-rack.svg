@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="72" height="96" viewBox="0 0 72 96" role="img" aria-label="Cathedral weapon rack object">
+    <title>Cathedral weapon rack object</title>
+    <rect width="72" height="96" fill="none"/>
+
+      <ellipse data-layer="object-shadow" cx="36" cy="75" rx="22" ry="8" fill="#020304" opacity="0.5"/>
+      <path data-layer="object-rack" d="M 19 74 L 36 29 L 53 74 M 17 52 L 55 52" fill="none" stroke="#3b2415" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path data-layer="object-blades" d="M 26 26 L 34 63 M 47 27 L 39 63" fill="none" stroke="#a9b2bd" stroke-width="2" stroke-linecap="round"/>
+      <path d="M 22 26 L 30 26 M 43 27 L 51 27" stroke="#d2dae2" stroke-width="2" stroke-linecap="round"/>
+      <ellipse cx="36" cy="76" rx="17" ry="5" fill="#442515"/>
+  </svg>

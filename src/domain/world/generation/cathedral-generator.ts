@@ -2,6 +2,11 @@ import { checksumJson } from '../../../core/hash';
 import { GameRng } from '../../../core/rng';
 import { pointKey } from '../../../core/grid';
 import type { GridPoint, GridRect } from '../../../core/grid';
+import { CATHEDRAL_STRUCTURE_TILE_KINDS } from '../cathedral-render-tiles';
+import {
+  devilutionxCathedralRawBlocksObjectPlacement,
+  generateDevilutionxCathedralRawLevel,
+} from '../devilutionx-cathedral-raw';
 import type {
   CathedralGenerationMetadata,
   CathedralGenerationTrace,
@@ -43,6 +48,7 @@ const CATHEDRAL_REGENERATION_LIMIT = 256;
 const SIDE_ROOM_ATTEMPTS = 20;
 const CATHEDRAL_SIDE_ROOM_SIZES = [2, 4, 6] as const;
 const CATHEDRAL_MINISET_PLACEMENT_ORDER = ['STAIRSUP', 'STAIRSDOWN', 'LAMPS'] as const satisfies readonly DungeonMinisetId[];
+const CATHEDRAL_STRUCTURE_TILE_KIND_SET = new Set<RenderTileKind>(CATHEDRAL_STRUCTURE_TILE_KINDS);
 const CHAMBER_PILLAR_OFFSETS: readonly GridPoint[] = [
   { x: 4, y: 4 },
   { x: 7, y: 4 },
@@ -96,6 +102,7 @@ export function generateCathedralLevel(request: DungeonGenerationRequest, seed: 
     minisetPlacements,
   });
   traceStages.push(renderStageTrace(tileization.renderTiles, tiles, layout));
+  protectCathedralRenderBlockingFootprints(protectedFootprints, tileization.renderTiles, request, seed);
 
   const rooms = layout.rooms.map((room) => room.rect);
   const doors = inferDoorCandidates(tiles);
@@ -416,4 +423,46 @@ function countPassableTiles(tiles: readonly (readonly string[])[]): number {
     }
   }
   return count;
+}
+
+function protectCathedralRenderBlockingFootprints(
+  protectedFootprints: Set<string>,
+  renderTiles: readonly (readonly RenderTileKind[])[],
+  request: DungeonGenerationRequest,
+  seed: number,
+): void {
+  for (let y = 0; y < renderTiles.length; y += 1) {
+    for (let x = 0; x < renderTiles[y].length; x += 1) {
+      if (CATHEDRAL_STRUCTURE_TILE_KIND_SET.has(renderTiles[y][x])) {
+        protectedFootprints.add(pointKey({ x, y }));
+      }
+    }
+  }
+
+  const rawTileLayout = createRawCathedralTileLayout(request, seed);
+  if (!rawTileLayout) {
+    return;
+  }
+  for (let y = 0; y < rawTileLayout.length; y += 1) {
+    for (let x = 0; x < rawTileLayout[y].length; x += 1) {
+      if (devilutionxCathedralRawBlocksObjectPlacement(rawTileLayout[y][x])) {
+        protectedFootprints.add(pointKey({ x, y }));
+      }
+    }
+  }
+}
+
+function createRawCathedralTileLayout(request: DungeonGenerationRequest, seed: number): number[][] | undefined {
+  if (!isRawCathedralLevel(request.levelNumber)) {
+    return undefined;
+  }
+  return generateDevilutionxCathedralRawLevel(seed, {
+    levelNumber: request.levelNumber,
+    poisonedWaterAvailable: request.includeQuestLocks && request.levelNumber === 2,
+    lightBannerAvailable: false,
+  }).tileLayout;
+}
+
+function isRawCathedralLevel(levelNumber: number): levelNumber is 1 | 2 | 3 | 4 {
+  return levelNumber === 1 || levelNumber === 2 || levelNumber === 3 || levelNumber === 4;
 }

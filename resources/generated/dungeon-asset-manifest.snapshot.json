@@ -122,6 +122,46 @@
           "path": "/assets/cathedral/tile-dividing-wall.png",
           "width": 72,
           "height": 48
+        },
+        {
+          "key": "cathedral.object.SHRINE",
+          "kind": "image",
+          "semantic": "object.SHRINE",
+          "path": "/assets/cathedral/object-shrine.svg",
+          "width": 72,
+          "height": 96
+        },
+        {
+          "key": "cathedral.object.BOOKCASE",
+          "kind": "image",
+          "semantic": "object.BOOKCASE",
+          "path": "/assets/cathedral/object-bookcase.svg",
+          "width": 72,
+          "height": 96
+        },
+        {
+          "key": "cathedral.object.BARREL_CLUSTER",
+          "kind": "image",
+          "semantic": "object.BARREL_CLUSTER",
+          "path": "/assets/cathedral/object-barrel-cluster.svg",
+          "width": 72,
+          "height": 96
+        },
+        {
+          "key": "cathedral.object.SARCOPHAGUS",
+          "kind": "image",
+          "semantic": "object.SARCOPHAGUS",
+          "path": "/assets/cathedral/object-sarcophagus.svg",
+          "width": 72,
+          "height": 96
+        },
+        {
+          "key": "cathedral.object.WEAPON_RACK",
+          "kind": "image",
+          "semantic": "object.WEAPON_RACK",
+          "path": "/assets/cathedral/object-weapon-rack.svg",
+          "width": 72,
+          "height": 96
         }
       ]
     },
@@ -418,6 +458,46 @@
       "path": "/assets/cathedral/tile-dividing-wall.png",
       "width": 72,
       "height": 48
+    },
+    {
+      "key": "cathedral.object.SHRINE",
+      "kind": "image",
+      "semantic": "object.SHRINE",
+      "path": "/assets/cathedral/object-shrine.svg",
+      "width": 72,
+      "height": 96
+    },
+    {
+      "key": "cathedral.object.BOOKCASE",
+      "kind": "image",
+      "semantic": "object.BOOKCASE",
+      "path": "/assets/cathedral/object-bookcase.svg",
+      "width": 72,
+      "height": 96
+    },
+    {
+      "key": "cathedral.object.BARREL_CLUSTER",
+      "kind": "image",
+      "semantic": "object.BARREL_CLUSTER",
+      "path": "/assets/cathedral/object-barrel-cluster.svg",
+      "width": 72,
+      "height": 96
+    },
+    {
+      "key": "cathedral.object.SARCOPHAGUS",
+      "kind": "image",
+      "semantic": "object.SARCOPHAGUS",
+      "path": "/assets/cathedral/object-sarcophagus.svg",
+      "width": 72,
+      "height": 96
+    },
+    {
+      "key": "cathedral.object.WEAPON_RACK",
+      "kind": "image",
+      "semantic": "object.WEAPON_RACK",
+      "path": "/assets/cathedral/object-weapon-rack.svg",
+      "width": 72,
+      "height": 96
     },
     {
       "key": "catacombs.floor",

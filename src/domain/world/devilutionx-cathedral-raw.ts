@@ -1,5 +1,6 @@
 import { checksumJson } from '../../core/hash';
 import { GameRng } from '../../core/rng';
+import type { RenderTileKind } from './dungeon-types';
 
 const DMAXX = 40;
 const DMAXY = 40;
@@ -245,6 +246,66 @@ export function readDevilutionxDunTileLayer(bytes: Uint8Array): Uint8Array {
   }
   return output;
 }
+
+export function devilutionxCathedralBaseTypeForTileId(tileId: number): number {
+  return BASE_TYPES[tileId] ?? 0;
+}
+
+export function devilutionxCathedralRenderTileForTileId(tileId: number | undefined): RenderTileKind | undefined {
+  if (tileId === undefined) {
+    return undefined;
+  }
+
+  const baseType = devilutionxCathedralBaseTypeForTileId(tileId);
+  if (RAW_CATHEDRAL_DOOR_TILE_IDS.has(tileId)) {
+    return 'door';
+  }
+  if (RAW_CATHEDRAL_VERTICAL_WALL_TILE_IDS.has(tileId) || RAW_CATHEDRAL_VERTICAL_WALL_BASE_TYPES.has(baseType)) {
+    return 'cathedralVerticalWall';
+  }
+  if (RAW_CATHEDRAL_HORIZONTAL_WALL_TILE_IDS.has(tileId) || RAW_CATHEDRAL_HORIZONTAL_WALL_BASE_TYPES.has(baseType)) {
+    return 'cathedralHorizontalWall';
+  }
+  if (RAW_CATHEDRAL_CORNER_TILE_IDS.has(tileId) || RAW_CATHEDRAL_CORNER_BASE_TYPES.has(baseType)) {
+    return 'cathedralCornerWall';
+  }
+  if (RAW_CATHEDRAL_ARCH_TILE_IDS.has(tileId) || RAW_CATHEDRAL_ARCH_BASE_TYPES.has(baseType)) {
+    return tileId === 11 || tileId === 9 || baseType === 11 || baseType === 9 || baseType === 14
+      ? 'cathedralVerticalArch'
+      : 'cathedralHorizontalArch';
+  }
+  if (RAW_CATHEDRAL_DIAGONAL_TILE_IDS.has(tileId) || RAW_CATHEDRAL_DIAGONAL_BASE_TYPES.has(baseType)) {
+    return 'cathedralDiagonalWall';
+  }
+  if (RAW_CATHEDRAL_PILLAR_TILE_IDS.has(tileId) || RAW_CATHEDRAL_PILLAR_BASE_TYPES.has(baseType)) {
+    return 'cathedralPillar';
+  }
+  if (RAW_CATHEDRAL_DOOR_BASE_TYPES.has(baseType)) {
+    return 'door';
+  }
+
+  return undefined;
+}
+
+export function devilutionxCathedralRawBlocksObjectPlacement(tileId: number | undefined): boolean {
+  return devilutionxCathedralRenderTileForTileId(tileId) !== undefined;
+}
+
+const RAW_CATHEDRAL_VERTICAL_WALL_BASE_TYPES = new Set([1, 6, 16]);
+const RAW_CATHEDRAL_HORIZONTAL_WALL_BASE_TYPES = new Set([2, 7, 17]);
+const RAW_CATHEDRAL_CORNER_BASE_TYPES = new Set([3, 16, 17]);
+const RAW_CATHEDRAL_DIAGONAL_BASE_TYPES = new Set([4]);
+const RAW_CATHEDRAL_ARCH_BASE_TYPES = new Set([5, 8, 9, 10, 11, 12, 14]);
+const RAW_CATHEDRAL_PILLAR_BASE_TYPES = new Set([15]);
+const RAW_CATHEDRAL_DOOR_BASE_TYPES = new Set([25, 26]);
+
+const RAW_CATHEDRAL_VERTICAL_WALL_TILE_IDS = new Set([1, 6, 16, 19, 24, 35, 37, 79, 89, 90, 200, 205]);
+const RAW_CATHEDRAL_HORIZONTAL_WALL_TILE_IDS = new Set([2, 7, 17, 18, 23, 36, 80, 91, 92, 148, 154, 199, 204]);
+const RAW_CATHEDRAL_CORNER_TILE_IDS = new Set([3, 20, 21, 202]);
+const RAW_CATHEDRAL_DIAGONAL_TILE_IDS = new Set([4, 29]);
+const RAW_CATHEDRAL_ARCH_TILE_IDS = new Set([5, 8, 9, 10, 11, 12, 14, 38, 39, 149, 153]);
+const RAW_CATHEDRAL_PILLAR_TILE_IDS = new Set([15]);
+const RAW_CATHEDRAL_DOOR_TILE_IDS = new Set([25, 26]);
 
 class CathedralRawGenerator {
   private readonly rng: GameRng;

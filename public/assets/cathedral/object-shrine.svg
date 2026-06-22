@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="72" height="96" viewBox="0 0 72 96" role="img" aria-label="Cathedral shrine object">
+    <title>Cathedral shrine object</title>
+    <rect width="72" height="96" fill="none"/>
+
+      <ellipse data-layer="object-shadow" cx="36" cy="73" rx="29" ry="11" fill="#020304" opacity="0.52"/>
+
+      <path data-layer="object-base-left" d="M 13 60 L 36 71 L 36 81 L 13 70 Z" fill="#333944" stroke="#151922" stroke-width="2"/>
+      <path data-layer="object-base-right" d="M 59 60 L 36 71 L 36 81 L 59 70 Z" fill="#4a515d" stroke="#151922" stroke-width="2"/>
+      <path data-layer="object-base-top" d="M 36 49 L 59 60 L 36 71 L 13 60 Z" fill="#6f7681" stroke="#151922" stroke-width="2"/>
+
+      <path data-layer="object-plinth-left" d="M 21 41 L 36 49 L 36 60 L 21 52 Z" fill="#434a55" stroke="#171b24" stroke-width="2"/>
+      <path data-layer="object-plinth-right" d="M 51 41 L 36 49 L 36 60 L 51 52 Z" fill="#5e6672" stroke="#171b24" stroke-width="2"/>
+      <path data-layer="object-plinth-top" d="M 36 33 L 51 41 L 36 49 L 21 41 Z" fill="#858c98" stroke="#171b24" stroke-width="2"/>
+      <rect data-layer="object-column" x="29" y="20" width="14" height="31" fill="#8f96a3" stroke="#141821" stroke-width="2"/>
+      <path data-layer="object-cap" d="M 20 51 L 52 51 L 36 37 Z" fill="#5b626e" stroke="#141821" stroke-width="2"/>
+      <circle data-layer="object-glow" cx="36" cy="15" r="12" fill="#f6d365" opacity="0.28"/>
+      <circle data-layer="object-flame" cx="36" cy="15" r="4" fill="#fff0a8" opacity="0.8"/>
+  </svg>

@@ -3,12 +3,17 @@ import { join, relative, resolve, sep } from 'node:path';
 import { inflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import { CATHEDRAL_STRUCTURE_TILE_KINDS } from '../src/domain/world/cathedral-render-tiles';
-import type { TileKind } from '../src/domain/world/dungeon-generator';
+import type { DungeonObjectPresetId, TileKind } from '../src/domain/world/dungeon-generator';
 import { REQUIRED_TILE_SEMANTICS } from '../src/domain/world/tile-semantics';
 import {
   resourcePackIdForDungeonType,
+  CATHEDRAL_OBJECT_ASSET_KEYS,
+  CATHEDRAL_OBJECT_ASSET_PATHS,
   CATHEDRAL_TILE_ASSET_KEYS,
   CATHEDRAL_TILE_ASSET_PATHS,
+  OBJECT_ASSET_KEYS_BY_DUNGEON,
+  objectAssetKeysForResourcePack,
+  objectAssetPathsForResourcePack,
   TILE_ASSET_ENTRIES,
   TILE_ASSET_KEYS_BY_DUNGEON,
   TILE_ASSET_PATHS_BY_DUNGEON,
@@ -16,6 +21,14 @@ import {
   tileAssetPathsForResourcePack,
   type AssetManifestEntry,
 } from '../src/presentation/bindings/dungeon-assets';
+
+const CATHEDRAL_OBJECT_PRESET_IDS = [
+  'SHRINE',
+  'BOOKCASE',
+  'BARREL_CLUSTER',
+  'SARCOPHAGUS',
+  'WEAPON_RACK',
+] as const satisfies readonly DungeonObjectPresetId[];
 
 describe('Dungeon generated resources', () => {
   it('uses one generated registry for manifest files and runtime preload mappings', () => {
@@ -82,7 +95,9 @@ describe('Dungeon generated resources', () => {
 
     expect(pack).toBeDefined();
     expect(pack!.dungeonTypes).toEqual(['Cathedral']);
-    expect(pack!.assets).toHaveLength(REQUIRED_TILE_SEMANTICS.length + CATHEDRAL_STRUCTURE_TILE_KINDS.length);
+    expect(pack!.assets).toHaveLength(
+      REQUIRED_TILE_SEMANTICS.length + CATHEDRAL_STRUCTURE_TILE_KINDS.length + CATHEDRAL_OBJECT_PRESET_IDS.length,
+    );
 
     for (const tileKind of CATHEDRAL_STRUCTURE_TILE_KINDS) {
       const semantic = `tile.${tileKind}`;
@@ -100,6 +115,36 @@ describe('Dungeon generated resources', () => {
     expect(tileAssetKeysForResourcePack('cathedral-lab-placeholder').cathedralPillar).toBe('cathedral.cathedralPillar');
     expect(tileAssetPathsForResourcePack('cathedral-lab-placeholder').cathedralPillar).toBe('/assets/cathedral/tile-pillar.png');
     expect(tileAssetKeysForResourcePack('catacombs-lab-placeholder').cathedralPillar).toBeUndefined();
+  });
+
+  it('includes Cathedral object sprites and runtime mappings for every object preset', () => {
+    const publicRoot = resolve(process.cwd(), 'public');
+    const manifestPath = join(publicRoot, 'assets/asset-manifest.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+      resourcePacks: { resourcePackId: string; dungeonTypes: string[]; assets: AssetManifestEntry[] }[];
+    };
+    const pack = manifest.resourcePacks.find((resourcePack) => resourcePack.resourcePackId === 'cathedral-lab-placeholder');
+
+    expect(pack).toBeDefined();
+    for (const presetId of CATHEDRAL_OBJECT_PRESET_IDS) {
+      const semantic = `object.${presetId}`;
+      const entry = pack!.assets.find((asset) => asset.semantic === semantic);
+      const path = CATHEDRAL_OBJECT_ASSET_PATHS[presetId];
+      const assetPath = resolve(publicRoot, path!.replace(/^\//, ''));
+
+      expect(entry).toBeDefined();
+      expect(CATHEDRAL_OBJECT_ASSET_KEYS[presetId]).toBe(entry!.key);
+      expect(OBJECT_ASSET_KEYS_BY_DUNGEON.Cathedral[presetId]).toBe(entry!.key);
+      expect(objectAssetKeysForResourcePack('cathedral-lab-placeholder')[presetId]).toBe(entry!.key);
+      expect(objectAssetPathsForResourcePack('cathedral-lab-placeholder')[presetId]).toBe(entry!.path);
+      expect(path).toBe(entry!.path);
+      expect(path).toMatch(/^\/assets\/cathedral\/object-.+\.svg$/);
+      expect(entry!.width).toBe(72);
+      expect(entry!.height).toBe(96);
+      expect(existsSync(assetPath)).toBe(true);
+    }
+
+    expect(objectAssetKeysForResourcePack('catacombs-lab-placeholder').SHRINE).toBeUndefined();
   });
 
   it('emits Cathedral structure sprites as transparent PNG images with shared wall coverage', () => {

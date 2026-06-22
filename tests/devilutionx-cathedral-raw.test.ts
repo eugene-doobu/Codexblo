@@ -1,7 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { generateDevilutionxCathedralRawLevel } from '../src/domain/world/devilutionx-cathedral-raw';
+import {
+  devilutionxCathedralRawBlocksObjectPlacement,
+  devilutionxCathedralRenderTileForTileId,
+  generateDevilutionxCathedralRawLevel,
+} from '../src/domain/world/devilutionx-cathedral-raw';
 
 interface RawFixtureManifest {
   schema: 'cathedral-raw-fixture-manifest-v1';
@@ -71,6 +75,20 @@ describe('DevilutionX Cathedral raw parity', () => {
       levelNumber: 4,
       lightBannerAvailable: true,
     })).toThrow('light-banner setpiece levels is not implemented');
+  });
+
+  it('maps raw tile ids to renderer semantics with explicit doors before broad base types', () => {
+    expect(devilutionxCathedralRenderTileForTileId(25)).toBe('door');
+    expect(devilutionxCathedralRenderTileForTileId(26)).toBe('door');
+    expect(devilutionxCathedralRenderTileForTileId(1)).toBe('cathedralVerticalWall');
+    expect(devilutionxCathedralRenderTileForTileId(2)).toBe('cathedralHorizontalWall');
+    expect(devilutionxCathedralRenderTileForTileId(5)).toBe('cathedralHorizontalArch');
+    expect(devilutionxCathedralRenderTileForTileId(15)).toBe('cathedralPillar');
+    expect(devilutionxCathedralRenderTileForTileId(13)).toBeUndefined();
+
+    expect(devilutionxCathedralRawBlocksObjectPlacement(25)).toBe(true);
+    expect(devilutionxCathedralRawBlocksObjectPlacement(26)).toBe(true);
+    expect(devilutionxCathedralRawBlocksObjectPlacement(13)).toBe(false);
   });
 });
 

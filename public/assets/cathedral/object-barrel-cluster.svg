@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="72" height="96" viewBox="0 0 72 96" role="img" aria-label="Cathedral barrel cluster object">
+    <title>Cathedral barrel cluster object</title>
+    <rect width="72" height="96" fill="none"/>
+
+      <ellipse data-layer="object-shadow" cx="36" cy="75" rx="30" ry="11" fill="#020304" opacity="0.52"/>
+
+      <ellipse cx="23" cy="67.8" rx="9.200000000000001" ry="3.68" fill="#2c160b" opacity="0.72"/>
+      <rect x="14.719999999999999" y="48.48" width="16.560000000000002" height="22.080000000000002" rx="4.6000000000000005" fill="#7b421e" stroke="#2a1409" stroke-width="2"/>
+      <ellipse data-layer="object-barrel-top" cx="23" cy="48.48" rx="8.280000000000001" ry="3.68" fill="#a7622a" stroke="#2a1409" stroke-width="2"/>
+      <path d="M 15.64 54.92 L 30.36 54.92 M 15.64 63.2 L 30.36 63.2" stroke="#1e130d" stroke-width="2" opacity="0.74"/>
+
+      <ellipse cx="48" cy="68.5" rx="9" ry="3.6" fill="#2c160b" opacity="0.72"/>
+      <rect x="39.9" y="49.6" width="16.2" height="21.6" rx="4.5" fill="#7b421e" stroke="#2a1409" stroke-width="2"/>
+      <ellipse data-layer="object-barrel-top" cx="48" cy="49.6" rx="8.1" ry="3.6" fill="#a7622a" stroke="#2a1409" stroke-width="2"/>
+      <path d="M 40.8 55.9 L 55.2 55.9 M 40.8 64 L 55.2 64" stroke="#1e130d" stroke-width="2" opacity="0.74"/>
+
+      <ellipse cx="36" cy="59" rx="10" ry="4" fill="#2c160b" opacity="0.72"/>
+      <rect x="27" y="38" width="18" height="24" rx="5" fill="#7b421e" stroke="#2a1409" stroke-width="2"/>
+      <ellipse data-layer="object-barrel-top" cx="36" cy="38" rx="9" ry="4" fill="#a7622a" stroke="#2a1409" stroke-width="2"/>
+      <path d="M 28 45 L 44 45 M 28 54 L 44 54" stroke="#1e130d" stroke-width="2" opacity="0.74"/>
+  </svg>

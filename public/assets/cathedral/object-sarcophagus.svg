@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="72" height="96" viewBox="0 0 72 96" role="img" aria-label="Cathedral sarcophagus object">
+    <title>Cathedral sarcophagus object</title>
+    <rect width="72" height="96" fill="none"/>
+
+      <ellipse data-layer="object-shadow" cx="36" cy="75" rx="34" ry="12" fill="#020304" opacity="0.5"/>
+
+      <path data-layer="object-stone-coffin-left" d="M 5 59 L 36 73 L 36 82 L 5 68 Z" fill="#3f3a33" stroke="#17150f" stroke-width="2"/>
+      <path data-layer="object-stone-coffin-right" d="M 67 59 L 36 73 L 36 82 L 67 68 Z" fill="#575044" stroke="#17150f" stroke-width="2"/>
+      <path data-layer="object-stone-coffin-top" d="M 36 45 L 67 59 L 36 73 L 5 59 Z" fill="#787060" stroke="#17150f" stroke-width="2"/>
+      <path data-layer="object-lid" d="M 36 43 L 64 58 L 36 73 L 8 58 Z" fill="none" stroke="#2b261e" stroke-width="2" opacity="0.7"/>
+      <path d="M 18 58 L 54 58 M 36 48 L 36 68" stroke="#b0a080" stroke-width="2" opacity="0.42"/>
+  </svg>

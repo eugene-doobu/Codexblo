@@ -6,6 +6,8 @@ export type SeedMode = 'random' | 'manual' | 'fixture';
 export type TileKind = 'void' | 'floor' | 'wall' | 'door' | 'stairUp' | 'stairDown';
 export type RenderTileKind = TileKind | CathedralStructureTileKind;
 export type TileAssetSemantic = `tile.${RenderTileKind}`;
+export type ObjectAssetSemantic = `object.${DungeonObjectPresetId}`;
+export type DungeonAssetSemantic = TileAssetSemantic | ObjectAssetSemantic;
 
 export interface DungeonGenerationRequest {
   dungeonType: DungeonType;

@@ -9,8 +9,11 @@ import type {
   RenderTileKind,
   TileKind,
 } from '../dungeon-types';
+import { CATHEDRAL_STRUCTURE_TILE_KINDS } from '../cathedral-render-tiles';
 import { knownTileSemanticsForDungeon } from '../tile-semantics';
 import { inside, neighbors4, parsePointKey, PASSABLE_TILES, VALID_TILE_KINDS } from './shared';
+
+const CATHEDRAL_STRUCTURE_TILE_KIND_SET = new Set<RenderTileKind>(CATHEDRAL_STRUCTURE_TILE_KINDS);
 
 export function isPassable(tile: TileKind): boolean {
   return PASSABLE_TILES.has(tile);
@@ -219,10 +222,32 @@ function validateObjectPlacements(level: DungeonLevel, reachable: ReadonlySet<st
         message: `Object preset ${object.id} overlaps another object preset.`,
       });
     }
+    if (level.generation.familyId === 'Cathedral' && rectOverlapsCathedralRenderStructure(level, area)) {
+      issues.push({
+        rule: 'CathedralObjectRenderFootprint',
+        severity: 'error',
+        message: `Object preset ${object.id} overlaps a Cathedral render structure tile.`,
+      });
+    }
     occupied.push(area);
   }
 
   return issues;
+}
+
+function rectOverlapsCathedralRenderStructure(level: DungeonLevel, area: GridRect): boolean {
+  if (!level.renderTiles) {
+    return false;
+  }
+  for (let y = area.y; y < area.y + area.height; y += 1) {
+    for (let x = area.x; x < area.x + area.width; x += 1) {
+      const renderTile = level.renderTiles[y]?.[x];
+      if (renderTile && CATHEDRAL_STRUCTURE_TILE_KIND_SET.has(renderTile)) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 function validateCathedralObjectPresetCoverage(level: DungeonLevel): DungeonValidationIssue[] {
