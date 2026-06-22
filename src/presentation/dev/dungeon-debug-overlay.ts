@@ -85,27 +85,29 @@ export class DungeonDebugRenderer {
         const screen = toIso({ x, y }, gridSize);
         const depth = screen.y + tileDepthBias(renderTile);
 
-        const sprite = this.scene.add.image(screen.x, screen.y, assetKey);
-        sprite.setOrigin(0.5, 0.5);
-        sprite.setDepth(depth);
-        sprite.setAlpha(tile === 'void' ? 0.38 : 1);
-        sprite.setName(`tile-${x}-${y}-${renderTile}`);
-        sprite.setData({
-          gridX: x,
-          gridY: y,
-          tile,
-          renderTile,
-          assetKey,
-          floorPlaneX: screen.x,
-          floorPlaneY: screen.y,
-        });
-        this.tileSprites.push(sprite);
+        if (renderTile !== 'void') {
+          const sprite = this.scene.add.image(screen.x, screen.y, assetKey);
+          sprite.setOrigin(0.5, 0.5);
+          sprite.setDepth(depth);
+          sprite.setAlpha(1);
+          sprite.setName(`tile-${x}-${y}-${renderTile}`);
+          sprite.setData({
+            gridX: x,
+            gridY: y,
+            tile,
+            renderTile,
+            assetKey,
+            floorPlaneX: screen.x,
+            floorPlaneY: screen.y,
+          });
+          this.tileSprites.push(sprite);
+          renderedTiles.push({ x, y, tile, renderTile, assetKey, screenX: screen.x, screenY: screen.y, depth });
+        }
 
         if (rawTiles && tile !== 'void') {
           const color = rawValue !== undefined ? rawTileColor(rawValue) : semanticTileColor(tile);
           fillDiamondAt(rawTiles, screen, color, 0.34);
         }
-        renderedTiles.push({ x, y, tile, renderTile, assetKey, screenX: screen.x, screenY: screen.y, depth });
       }
     }
     if (rawTiles) {
