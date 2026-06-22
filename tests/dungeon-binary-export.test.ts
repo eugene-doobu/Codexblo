@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { generateDevilutionxCathedralRawLevel } from '../src/domain/world/devilutionx-cathedral-raw';
 import {
   createGenerationRequest,
   generateDungeon,
@@ -32,6 +31,61 @@ describe('Dungeon binary export', () => {
     );
     expect(bytes[0]).toBe(DUNGEON_TILE_BYTE_VALUES[result.level.tiles[0][0]]);
     expect(bytes[41]).toBe(DUNGEON_TILE_BYTE_VALUES[result.level.tiles[1][1]]);
+  });
+
+  it('exports every Cathedral logical tile as its documented semantic byte', () => {
+    const exported = createDungeonBinaryExport({ dungeonType: 'Cathedral', levelNumber: 1, seedText: '123456789' });
+    const expectedBytes = exported.result.level.tiles.flatMap((row) => row.map((tile) => DUNGEON_TILE_BYTE_VALUES[tile]));
+
+    expect(Array.from(exported.tileBytes)).toEqual(expectedBytes);
+    expect(exported.tileByteLayout.flat()).toEqual(expectedBytes);
+  });
+
+  it('keeps Cathedral render-only inner structures out of semantic tile bytes', () => {
+    const exported = createDungeonBinaryExport({ dungeonType: 'Cathedral', levelNumber: 1, seedText: 'cathedral-test-seed' });
+    const { level } = exported.result;
+    const { renderTiles, generation } = level;
+
+    if (!renderTiles || generation.familyId !== 'Cathedral') {
+      throw new Error('Expected Cathedral render tile metadata.');
+    }
+
+    const logicalWallStructures = new Set([
+      'cathedralVerticalWall',
+      'cathedralHorizontalWall',
+      'cathedralCornerWall',
+      'cathedralDiagonalWall',
+      'cathedralPillar',
+    ]);
+    const renderOnlyStructures = new Set([
+      'cathedralDividingWall',
+      'cathedralVerticalArch',
+      'cathedralHorizontalArch',
+    ]);
+    let assertedLogicalWallCount = 0;
+    let assertedRenderOnlyCount = 0;
+
+    for (let y = 0; y < level.height; y += 1) {
+      for (let x = 0; x < level.width; x += 1) {
+        const renderTile = renderTiles[y][x];
+        const offset = y * level.width + x;
+
+        if (logicalWallStructures.has(renderTile)) {
+          expect(level.tiles[y][x]).toBe('wall');
+          expect(exported.tileBytes[offset]).toBe(DUNGEON_TILE_BYTE_VALUES.wall);
+          assertedLogicalWallCount += 1;
+        }
+
+        if (renderOnlyStructures.has(renderTile)) {
+          expect(level.tiles[y][x]).toBe('floor');
+          expect(exported.tileBytes[offset]).toBe(DUNGEON_TILE_BYTE_VALUES.floor);
+          assertedRenderOnlyCount += 1;
+        }
+      }
+    }
+
+    expect(assertedLogicalWallCount).toBeGreaterThan(0);
+    expect(assertedRenderOnlyCount).toBeGreaterThan(0);
   });
 
   it('wraps tile bytes in a deterministic binary header', () => {
@@ -108,7 +162,11 @@ describe('Dungeon binary export', () => {
       levelNumber: 1,
       seedText: '2588',
     }, { format: 'devilutionx' });
-    const reference = readRawFixture('diablo-1-2588.raw');
+    const reference = generateDevilutionxCathedralRawLevel(2588, {
+      levelNumber: 1,
+      poisonedWaterAvailable: false,
+      lightBannerAvailable: false,
+    }).tileBytes;
 
     expect(exported.header.formatFlags).toBe(DUNGEON_BINARY_FORMAT_FLAGS.DEVILUTIONX_RAW_DUNGEON);
     expect(tileByteFormatForHeader(exported.header)).toBe(DUNGEON_BINARY_TILE_BYTE_FORMATS.DEVILUTIONX_RAW_DUNGEON);
@@ -187,7 +245,3 @@ describe('Dungeon binary export', () => {
     expect(exported.header.tileByteCount).toBe(1600);
   });
 });
-
-function readRawFixture(name: string): Uint8Array {
-  return new Uint8Array(readFileSync(resolve('tests/fixtures/devilutionx', name)));
-}

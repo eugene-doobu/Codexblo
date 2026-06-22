@@ -139,6 +139,32 @@ describe('Dungeon generated resources', () => {
     expect(luminanceAt(horizontal, 16, 27)).toBeGreaterThan(55);
   });
 
+  it('gives Cathedral arches a raised transparent wall silhouette instead of a flat floor marker', () => {
+    const publicRoot = resolve(process.cwd(), 'public');
+    const verticalPath = resolve(publicRoot, TILE_ASSET_PATHS_BY_DUNGEON.Cathedral.cathedralVerticalArch!.replace(/^\//, ''));
+    const horizontalPath = resolve(publicRoot, TILE_ASSET_PATHS_BY_DUNGEON.Cathedral.cathedralHorizontalArch!.replace(/^\//, ''));
+    const vertical = readPng(readFileSync(verticalPath));
+    const horizontal = readPng(readFileSync(horizontalPath));
+
+    for (const image of [vertical, horizontal]) {
+      expectOpaquePixels(image, [
+        [36, 4],
+        [36, 8],
+        [4, 24],
+        [68, 24],
+        [18, 36],
+        [54, 36],
+        [36, 42],
+      ]);
+      expectTransparentPixels(image, [
+        [8, 18],
+        [64, 18],
+        [8, 38],
+        [64, 38],
+      ]);
+    }
+  });
+
   it('includes a separate Caves resource pack and runtime asset mapping', () => {
     const publicRoot = resolve(process.cwd(), 'public');
     const manifestPath = join(publicRoot, 'assets/asset-manifest.json');
@@ -350,4 +376,16 @@ function alphaAt(image: { width: number; pixels: Uint8Array }, x: number, y: num
 function luminanceAt(image: { width: number; pixels: Uint8Array }, x: number, y: number): number {
   const index = (y * image.width + x) * 4;
   return image.pixels[index] * 0.2126 + image.pixels[index + 1] * 0.7152 + image.pixels[index + 2] * 0.0722;
+}
+
+function expectOpaquePixels(image: { width: number; pixels: Uint8Array }, points: [number, number][]): void {
+  for (const [x, y] of points) {
+    expect(alphaAt(image, x, y)).toBeGreaterThan(180);
+  }
+}
+
+function expectTransparentPixels(image: { width: number; pixels: Uint8Array }, points: [number, number][]): void {
+  for (const [x, y] of points) {
+    expect(alphaAt(image, x, y)).toBeLessThan(40);
+  }
 }

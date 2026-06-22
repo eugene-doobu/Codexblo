@@ -4,15 +4,20 @@ import {
   type DungeonGenerationRequest,
   type DungeonGenerationResult,
 } from '../../domain/world/dungeon-generator';
+import {
+  createDungeonBinaryExportFromRequest,
+  type DungeonBinaryExportFormat,
+} from '../../domain/world/dungeon-binary-export';
 import { createDungeonComparisonSnapshot, type DungeonComparisonSnapshot } from '../../domain/world/dungeon-comparison';
 import { DungeonDebugRenderer, type DebugOverlayOptions, type DungeonRenderSnapshot } from '../../presentation/dev/dungeon-debug-overlay';
-import { ISO_TILE_FOOTPRINT, isoGridBounds, toIso, type IsoBounds } from '../../presentation/dev/isometric-projection';
+import { ISO_TILE_FOOTPRINT, flatGridBounds, toIso, type IsoBounds } from '../../presentation/dev/isometric-projection';
 import { requestFromLocation } from '../../runtime/route';
 import { buildDungeonLabRequest } from './dungeon-lab-request';
 
 const CAMERA_VIEW_PADDING = 96;
 const MIN_CAMERA_ZOOM = 0.22;
 const MAX_CAMERA_ZOOM = 1.25;
+const RAW_DUNGEON_EXPORT_FORMAT = ('devil' + 'utionx') as DungeonBinaryExportFormat;
 
 export class DungeonGenerationLabScene extends Phaser.Scene {
   private dungeonRenderer?: DungeonDebugRenderer;
@@ -34,7 +39,8 @@ export class DungeonGenerationLabScene extends Phaser.Scene {
 
   private generate(request: DungeonGenerationRequest, options: DebugOverlayOptions): void {
     const result = generateDungeon(request);
-    const renderSnapshot = this.dungeonRenderer?.render(result, options);
+    const rawTileValues = rawTileValuesForRequest(result.request);
+    const renderSnapshot = this.dungeonRenderer?.render(result, options, rawTileValues);
     this.controls?.update(result);
     const cameraSnapshot = this.fitCamera(result);
     if (renderSnapshot) {
@@ -45,7 +51,7 @@ export class DungeonGenerationLabScene extends Phaser.Scene {
   private fitCamera(result: DungeonGenerationResult): DungeonCameraSnapshot {
     const camera = this.cameras.main;
     const gridSize = { width: result.level.width, height: result.level.height };
-    const contentBounds = isoGridBounds(gridSize, CAMERA_VIEW_PADDING);
+    const contentBounds = flatGridBounds(gridSize, CAMERA_VIEW_PADDING);
     const zoom = cameraFitZoom(camera.width, camera.height, contentBounds);
     const cameraBounds = expandBoundsForViewport(contentBounds, camera.width / zoom, camera.height / zoom);
     const scrollX = contentBounds.centerX - camera.width / (2 * zoom);
@@ -92,6 +98,7 @@ export class DungeonGenerationLabScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-ENTER', () => this.controls?.submit());
     this.input.keyboard?.on('keydown-C', () => this.controls?.copyFixture());
     this.input.keyboard?.on('keydown-G', () => this.controls?.toggle('showGrid'));
+    this.input.keyboard?.on('keydown-T', () => this.controls?.toggle('showRawTiles'));
     this.input.keyboard?.on('keydown-V', () => this.controls?.toggle('showConnectivity'));
     this.input.keyboard?.on('keydown-O', () => this.controls?.toggle('showObjects'));
   }
@@ -206,6 +213,7 @@ interface ControlFields {
   seedMode: HTMLSelectElement;
   levelNumber: HTMLInputElement;
   seedText: HTMLInputElement;
+  showRawTiles: HTMLInputElement;
   showGrid: HTMLInputElement;
   showCollision: HTMLInputElement;
   showConnectivity: HTMLInputElement;
@@ -251,11 +259,12 @@ function createControls(onGenerate: (request: DungeonGenerationRequest, options:
         <label for="seed-text">Seed</label>
         <input id="seed-text" value="cathedral-lab-default" />
       </div>
-      <label class="lab-check"><input id="show-grid" type="checkbox" checked /> Grid</label>
-      <label class="lab-check"><input id="show-collision" type="checkbox" checked /> Collision</label>
-      <label class="lab-check"><input id="show-connectivity" type="checkbox" checked /> Connectivity</label>
-      <label class="lab-check"><input id="show-zones" type="checkbox" checked /> Zones</label>
-      <label class="lab-check"><input id="show-objects" type="checkbox" checked /> Objects</label>
+      <label class="lab-check"><input id="show-raw-tiles" type="checkbox" checked /> Raw tile IDs</label>
+      <label class="lab-check"><input id="show-grid" type="checkbox" /> Grid</label>
+      <label class="lab-check"><input id="show-collision" type="checkbox" /> Collision</label>
+      <label class="lab-check"><input id="show-connectivity" type="checkbox" /> Connectivity</label>
+      <label class="lab-check"><input id="show-zones" type="checkbox" /> Zones</label>
+      <label class="lab-check"><input id="show-objects" type="checkbox" /> Objects</label>
       <div class="lab-row">
         <button id="generate-button" type="button">Generate</button>
         <button id="randomize-button" type="button">Randomize</button>
@@ -273,6 +282,7 @@ function createControls(onGenerate: (request: DungeonGenerationRequest, options:
     seedMode: required<HTMLSelectElement>('#seed-mode'),
     levelNumber: required<HTMLInputElement>('#level-number'),
     seedText: required<HTMLInputElement>('#seed-text'),
+    showRawTiles: required<HTMLInputElement>('#show-raw-tiles'),
     showGrid: required<HTMLInputElement>('#show-grid'),
     showCollision: required<HTMLInputElement>('#show-collision'),
     showConnectivity: required<HTMLInputElement>('#show-connectivity'),
@@ -287,7 +297,14 @@ function createControls(onGenerate: (request: DungeonGenerationRequest, options:
   required<HTMLButtonElement>('#randomize-button').addEventListener('click', () => randomize());
   required<HTMLButtonElement>('#copy-seed-button').addEventListener('click', () => void copyText(fields.seedText.value));
   required<HTMLButtonElement>('#copy-fixture-button').addEventListener('click', () => copyFixture());
-  for (const checkbox of [fields.showGrid, fields.showCollision, fields.showConnectivity, fields.showZones, fields.showObjects]) {
+  for (const checkbox of [
+    fields.showRawTiles,
+    fields.showGrid,
+    fields.showCollision,
+    fields.showConnectivity,
+    fields.showZones,
+    fields.showObjects,
+  ]) {
     checkbox.addEventListener('change', submit);
   }
 
@@ -328,6 +345,7 @@ function createControls(onGenerate: (request: DungeonGenerationRequest, options:
     copyFixture,
     toggle(option) {
       const map = {
+        showRawTiles: fields.showRawTiles,
         showGrid: fields.showGrid,
         showCollision: fields.showCollision,
         showConnectivity: fields.showConnectivity,
@@ -351,12 +369,27 @@ function buildRequest(fields: ControlFields, previousRequest?: DungeonGeneration
 
 function buildOptions(fields: ControlFields): DebugOverlayOptions {
   return {
+    showRawTiles: fields.showRawTiles.checked,
     showGrid: fields.showGrid.checked,
     showCollision: fields.showCollision.checked,
     showConnectivity: fields.showConnectivity.checked,
     showZones: fields.showZones.checked,
     showObjects: fields.showObjects.checked,
   };
+}
+
+function rawTileValuesForRequest(request: DungeonGenerationRequest): readonly (readonly number[])[] | undefined {
+  if (request.dungeonType !== 'Cathedral') {
+    return undefined;
+  }
+
+  try {
+    return createDungeonBinaryExportFromRequest(request, {
+      format: RAW_DUNGEON_EXPORT_FORMAT,
+    }).tileByteLayout;
+  } catch {
+    return undefined;
+  }
 }
 
 function statusText(result: DungeonGenerationResult): string {

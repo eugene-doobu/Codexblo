@@ -2,6 +2,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createDungeonBinaryExport } from '../src/domain/world/dungeon-binary-export';
 
 const projectRoot = resolve('.');
 const cliPath = resolve(projectRoot, 'scripts/export-dungeon-binary.mjs');
@@ -13,6 +14,13 @@ interface DungeonBinaryCliReport {
   seed: number;
   bytesWritten: number;
   outputPath: string;
+  rawTileBytes: boolean;
+  checksum: string;
+  tileChecksum: string;
+  fileChecksum: string;
+  tileByteFormat: string;
+  emittedByteLayout: 'tile-payload' | 'binary-file';
+  emittedByteFormat: string;
 }
 
 describe('Dungeon binary export CLI', () => {
@@ -53,6 +61,23 @@ describe('Dungeon binary export CLI', () => {
 
     const forced = runCli(['--seed', '123456789', '--out', out, '--force']);
     expect(forced.bytesWritten).toBe(1632);
+  });
+
+  it('writes raw Cathedral tile bytes matching the generated logical grid', () => {
+    const out = `${tempDir}/cathedral-raw.tiles.bin`;
+    const report = runCli(['--type', 'Cathedral', '--level', '1', '--seed', 'cathedral-test-seed', '--raw', '--out', out]);
+    const bytes = readFileSync(resolve(projectRoot, out));
+    const expected = createDungeonBinaryExport({ dungeonType: 'Cathedral', levelNumber: 1, seedText: 'cathedral-test-seed' }).tileBytes;
+
+    expect(report.rawTileBytes).toBe(true);
+    expect(report.bytesWritten).toBe(1600);
+    expect(report.tileByteFormat).toBe('codexblo-semantic-tile-kind');
+    expect(report.emittedByteLayout).toBe('tile-payload');
+    expect(report.emittedByteFormat).toBe(report.tileByteFormat);
+    expect(report.checksum).toBe(checksumBytes(bytes));
+    expect(report.tileChecksum).toBe(report.checksum);
+    expect(report.fileChecksum).not.toBe(report.checksum);
+    expect(Array.from(bytes)).toEqual(Array.from(expected));
   });
 
   it('keeps output paths inside the project root', () => {
@@ -99,8 +124,19 @@ describe('Dungeon binary export CLI', () => {
   });
 
   it('compares a DevilutionX raw Cathedral reference against a raw candidate byte-for-byte', () => {
+    const referencePath = `${tempDir}/cathedral-devilutionx-2588.raw`;
+    mkdirSync(resolve(projectRoot, tempDir), { recursive: true });
+    writeFileSync(
+      resolve(projectRoot, referencePath),
+      createDungeonBinaryExport({
+        dungeonType: 'Cathedral',
+        levelNumber: 1,
+        seedText: '2588',
+      }, { format: 'devilutionx' }).tileBytes,
+    );
+
     const result = spawnCompareCli([
-      '--reference', 'tests/fixtures/devilutionx/diablo-1-2588.raw',
+      '--reference', referencePath,
       '--reference-format', 'devilutionx',
       '--candidate-format', 'devilutionx',
       '--type', 'Cathedral',
@@ -225,4 +261,13 @@ function spawnCompareCli(args: string[]): { status: number | null; stdout: strin
 
 function removeTempDir(): void {
   rmSync(resolve(projectRoot, tempDir), { recursive: true, force: true });
+}
+
+function checksumBytes(bytes: Uint8Array): string {
+  let hash = 2166136261;
+  for (const byte of bytes) {
+    hash ^= byte;
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
 }

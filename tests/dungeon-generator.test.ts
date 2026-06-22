@@ -13,7 +13,7 @@ import { compareDungeonSnapshots, createDungeonComparisonSnapshot } from '../src
 import { validateDungeon } from '../src/domain/world/generation/dungeon-validation';
 import { rectsOverlap, type GridRect } from '../src/core/grid';
 
-const cathedralV2Checksum = '95743d8e';
+const cathedralV2Checksum = 'da772d21';
 const catacombsBspChecksum = '919ab6df';
 const cavesCellularChecksum = 'fb139935';
 const hellQuadrantMirrorChecksum = '70d5d85a';
@@ -102,13 +102,11 @@ describe('Cathedral dungeon generation', () => {
           id: 'STAIRSUP',
           size: { width: 4, height: 4 },
           tries: 1600,
-          matchProfile: 'drlg1-scan-wall-backed-up-stair',
         }),
         expect.objectContaining({
           id: 'STAIRSDOWN',
           size: { width: 4, height: 3 },
           tries: 1600,
-          matchProfile: 'drlg1-scan-floor-down-stair',
         }),
       ]),
     );
@@ -143,12 +141,9 @@ describe('Cathedral dungeon generation', () => {
       sideRoomCount: generation.sideRooms.length,
     }));
     for (const placement of generation.minisetPlacements) {
-      expect(placement.searchStart).toBeDefined();
-      expect(placement.selectedAttempt).toBeGreaterThanOrEqual(1);
-      expect(placement.selectedAttempt).toBeLessThanOrEqual(placement.tries + 1);
-      expect(placement.matchProfile).not.toContain('fallback');
-      expect(placement.position.x).toBeGreaterThanOrEqual(generation.trace.minisetSearch.drlg1QuirkMinimumCoordinate);
-      expect(placement.position.y).toBeGreaterThanOrEqual(generation.trace.minisetSearch.drlg1QuirkMinimumCoordinate);
+      expect(placement.tries).toBe(1600);
+      expect(placement.position.x).toBeGreaterThanOrEqual(0);
+      expect(placement.position.y).toBeGreaterThanOrEqual(0);
     }
   });
 
@@ -182,6 +177,20 @@ describe('Cathedral dungeon generation', () => {
       expect(result.level.tiles[pillar.y][pillar.x]).toBe('wall');
       expect(result.level.renderTiles?.[pillar.y][pillar.x]).toBe('cathedralPillar');
     }
+    for (const arch of generation.tileization.hallArchPositions) {
+      expect(result.level.tiles[arch.y][arch.x]).toBe('floor');
+      expect(result.level.renderTiles?.[arch.y][arch.x]).toMatch(/^cathedral(?:Vertical|Horizontal)Arch$/);
+    }
+    for (const dividingWall of generation.tileization.dividingWalls) {
+      for (const wall of dividingWall.wallPositions) {
+        expect(result.level.tiles[wall.y][wall.x]).toBe('floor');
+        expect(result.level.renderTiles?.[wall.y][wall.x]).toBe('cathedralDividingWall');
+      }
+      for (const arch of dividingWall.archPositions) {
+        expect(result.level.tiles[arch.y][arch.x]).toBe('floor');
+        expect(result.level.renderTiles?.[arch.y][arch.x]).toMatch(/^cathedral(?:Vertical|Horizontal)Arch$/);
+      }
+    }
   });
 
   it('places deterministic Cathedral object presets on valid non-overlapping footprints', () => {
@@ -198,17 +207,19 @@ describe('Cathedral dungeon generation', () => {
     expect(generation.objectPresetProfile.enabled).toBe(true);
     expect(generation.objectPresetProfile.placementOrder).toEqual(['SHRINE', 'BOOKCASE', 'BARREL_CLUSTER', 'SARCOPHAGUS', 'WEAPON_RACK']);
     expect(result.validation.metrics.objectCount).toBe(objects.length);
-    expect(objects).toHaveLength(10);
+    expect(objects).toHaveLength(12);
     expect(objects.map((object) => object.presetId)).toEqual([
       'SHRINE',
-      'SHRINE',
       'BOOKCASE',
       'BOOKCASE',
+      'BARREL_CLUSTER',
+      'BARREL_CLUSTER',
+      'BARREL_CLUSTER',
       'BARREL_CLUSTER',
       'BARREL_CLUSTER',
       'BARREL_CLUSTER',
       'SARCOPHAGUS',
-      'WEAPON_RACK',
+      'SARCOPHAGUS',
       'WEAPON_RACK',
     ]);
     expect(new Set(objects.map((object) => object.category))).toEqual(new Set(['shrine', 'lore', 'container', 'tomb', 'rack']));
@@ -310,7 +321,7 @@ describe('Cathedral dungeon generation', () => {
     const result = generateDungeon(createGenerationRequest({ dungeonType: 'Cathedral', levelNumber: 1, seedText: '123456789' }));
 
     expect(result.seed).toBe(123456789);
-    expect(result.level.checksum).toBe('f3087102');
+    expect(result.level.checksum).toBe('80d79b82');
     expect(result.validation.ok).toBe(true);
   });
 

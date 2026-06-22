@@ -24,7 +24,7 @@ const server = await createServer({
 });
 
 try {
-  const { createDungeonBinaryExport } = await server.ssrLoadModule('/src/domain/world/dungeon-binary-export.ts');
+  const { createDungeonBinaryExport, tileByteFormatForHeader } = await server.ssrLoadModule('/src/domain/world/dungeon-binary-export.ts');
   const dungeonType = parseDungeonType(args.type);
   const levelNumber = parseLevelNumber(args.level ?? defaultLevelForType(dungeonType));
   const seedMode = parseSeedMode(args.seedMode);
@@ -42,6 +42,11 @@ try {
   });
 
   const bytes = args.raw ? exportResult.tileBytes : exportResult.fileBytes;
+  const tileByteFormat = tileByteFormatForHeader(exportResult.header);
+  const emittedByteLayout = args.raw ? 'tile-payload' : 'binary-file';
+  const emittedByteFormat = args.raw ? tileByteFormat : exportResult.schema;
+  const tileChecksum = checksumBytes(exportResult.tileBytes);
+  const fileChecksum = checksumBytes(exportResult.fileBytes);
   const outputPath = resolveOutputPath(args.out ?? defaultOutputPath(exportResult, args.raw));
   mkdirSync(dirname(outputPath), { recursive: true });
   writeFileSync(outputPath, Buffer.from(bytes), { flag: args.force ? 'w' : 'wx' });
@@ -52,8 +57,12 @@ try {
     rawTileBytes: args.raw,
     bytesWritten: bytes.length,
     tileByteCount: exportResult.tileBytes.length,
-    checksum: exportResult.checksum,
-    tileByteFormat: args.format ?? 'semantic',
+    checksum: args.raw ? tileChecksum : fileChecksum,
+    tileChecksum,
+    fileChecksum,
+    tileByteFormat,
+    emittedByteLayout,
+    emittedByteFormat,
     seed: exportResult.seed,
     dungeonType: exportResult.header.dungeonType,
     levelNumber: exportResult.header.levelNumber,
@@ -222,6 +231,15 @@ function defaultLevelForType(dungeonType) {
     default:
       return '1';
   }
+}
+
+function checksumBytes(bytes) {
+  let hash = 2166136261;
+  for (const byte of bytes) {
+    hash ^= byte;
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
 function printUsage() {

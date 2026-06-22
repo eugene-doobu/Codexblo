@@ -267,9 +267,9 @@ class CathedralRawGenerator {
   constructor(seed: number, options: DevilutionxCathedralRawOptions) {
     this.rng = new GameRng(seed);
     this.levelNumber = options.levelNumber ?? 1;
-    this.originalCathedral = options.originalCathedral ?? true;
+    this.originalCathedral = options.originalCathedral ?? false;
     this.lightBannerAvailable = options.lightBannerAvailable ?? false;
-    this.poisonedWaterAvailable = options.poisonedWaterAvailable ?? this.levelNumber === 2;
+    this.poisonedWaterAvailable = options.poisonedWaterAvailable ?? false;
     this.setPieceRoomContains = options.setPieceRoomContains ?? (() => false);
   }
 

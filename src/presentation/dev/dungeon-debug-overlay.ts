@@ -1,12 +1,9 @@
 import Phaser from 'phaser';
-import type { GridPoint, GridRect } from '../../core/grid';
 import type { DungeonGenerationResult, DungeonObjectCategory, DungeonObjectPlacement, RenderTileKind, TileKind } from '../../domain/world/dungeon-generator';
-import { isPassable } from '../../domain/world/dungeon-generator';
-import { tileAssetKeysForResourcePack } from '../bindings/dungeon-assets';
-import { isCathedralStructureTile, tileDepthBias } from './dungeon-render-depth';
-import { ISO_TILE_FOOTPRINT, type GridSize, toIso } from './isometric-projection';
+import { FLAT_TILE_SIZE, ISO_TILE_FOOTPRINT, type GridSize, toIso } from './isometric-projection';
 
 export interface DebugOverlayOptions {
+  showRawTiles: boolean;
   showGrid: boolean;
   showCollision: boolean;
   showConnectivity: boolean;
@@ -19,6 +16,7 @@ export interface RenderedTileSnapshot {
   y: number;
   tile: TileKind;
   renderTile: RenderTileKind;
+  assetKey: string;
   screenX: number;
   screenY: number;
   depth: number;
@@ -29,6 +27,7 @@ export interface DungeonRenderSnapshot {
   tileFootprint: typeof ISO_TILE_FOOTPRINT;
   renderedTiles: readonly RenderedTileSnapshot[];
   renderedObjects: readonly RenderedObjectSnapshot[];
+  rawTileValues?: readonly (readonly number[])[];
 }
 
 export interface RenderedObjectSnapshot {
@@ -51,61 +50,48 @@ export class DungeonDebugRenderer {
 
   constructor(private readonly scene: Phaser.Scene) {}
 
-  render(result: DungeonGenerationResult, options: DebugOverlayOptions): DungeonRenderSnapshot {
+  render(
+    result: DungeonGenerationResult,
+    options: DebugOverlayOptions,
+    rawTileValues?: readonly (readonly number[])[],
+  ): DungeonRenderSnapshot {
     this.clear();
     const { level } = result;
     const gridSize = { width: level.width, height: level.height };
-    const tileAssetKeys = tileAssetKeysForResourcePack(result.request.resourcePackId);
     const renderedTiles: RenderedTileSnapshot[] = [];
     const renderedObjects = objectSnapshots(level.objects ?? [], gridSize);
 
-    this.drawCathedralStructureCohesion(level.renderTiles, gridSize);
-
+    // Flat top-down view: one colored square per tile, distinguished by tile value only.
+    // Cathedral uses the raw DevilutionX tile ids (so inner walls are visible); other
+    // dungeon types fall back to semantic tile colors.
+    const tiles = this.scene.add.graphics();
+    tiles.setDepth(1);
     for (let y = 0; y < level.height; y += 1) {
       for (let x = 0; x < level.width; x += 1) {
         const tile = level.tiles[y][x];
-        if (tile === 'void' && !options.showGrid) {
-          continue;
-        }
+        const rawValue = rawTileValues?.[y]?.[x];
+        const color = rawValue !== undefined ? rawTileColor(rawValue) : semanticTileColor(tile);
+        const screenX = x * FLAT_TILE_SIZE;
+        const screenY = y * FLAT_TILE_SIZE;
+        tiles.fillStyle(color, 1);
+        tiles.fillRect(screenX, screenY, FLAT_TILE_SIZE, FLAT_TILE_SIZE);
         const renderTile = level.renderTiles?.[y]?.[x] ?? tile;
-        const assetKey = tileAssetKeys[renderTile] ?? tileAssetKeys[tile];
-        const screen = toIso({ x, y }, gridSize);
-        const sprite = this.scene.add.image(screen.x, screen.y, assetKey);
-        sprite.setOrigin(0.5, 0.5);
-        const depth = screen.y + tileDepthBias(renderTile);
-        sprite.setDepth(depth);
-        sprite.setAlpha(tile === 'void' ? 0.25 : 1);
-        sprite.setName(`tile-${x}-${y}-${renderTile}`);
-        sprite.setData({
-          gridX: x,
-          gridY: y,
-          tile,
-          renderTile,
-          floorPlaneX: screen.x,
-          floorPlaneY: screen.y,
-        });
-        this.tileSprites.push(sprite);
-        renderedTiles.push({ x, y, tile, renderTile, screenX: screen.x, screenY: screen.y, depth });
+        renderedTiles.push({ x, y, tile, renderTile, assetKey: '', screenX, screenY, depth: 1 });
       }
     }
+    this.structureCohesionGraphics.push(tiles);
 
     this.overlay = this.scene.add.graphics();
     this.overlay.setDepth(100000);
 
     if (options.showGrid) {
-      this.drawGrid(level.width, level.height);
-    }
-    if (options.showCollision) {
-      this.drawCollision(result);
-    }
-    if (options.showConnectivity) {
-      this.drawConnectivity(result);
-    }
-    if (options.showZones) {
-      this.drawZones(result);
-    }
-    if (options.showObjects) {
-      this.drawObjects(result);
+      this.overlay.lineStyle(1, 0x000000, 0.25);
+      for (let gy = 0; gy <= level.height; gy += 1) {
+        this.overlay.lineBetween(0, gy * FLAT_TILE_SIZE, level.width * FLAT_TILE_SIZE, gy * FLAT_TILE_SIZE);
+      }
+      for (let gx = 0; gx <= level.width; gx += 1) {
+        this.overlay.lineBetween(gx * FLAT_TILE_SIZE, 0, gx * FLAT_TILE_SIZE, level.height * FLAT_TILE_SIZE);
+      }
     }
 
     return {
@@ -113,6 +99,7 @@ export class DungeonDebugRenderer {
       tileFootprint: ISO_TILE_FOOTPRINT,
       renderedTiles,
       renderedObjects,
+      rawTileValues,
     };
   }
 
@@ -127,154 +114,6 @@ export class DungeonDebugRenderer {
     this.structureCohesionGraphics.length = 0;
     this.overlay?.destroy();
     this.overlay = undefined;
-  }
-
-  private drawCathedralStructureCohesion(renderTiles: readonly (readonly RenderTileKind[])[] | undefined, gridSize: GridSize): void {
-    if (!renderTiles) {
-      return;
-    }
-
-    for (let y = 0; y < renderTiles.length; y += 1) {
-      for (let x = 0; x < renderTiles[y].length; x += 1) {
-        const renderTile = renderTiles[y][x];
-        if (!isCathedralStructureTile(renderTile)) {
-          continue;
-        }
-
-        const screen = toIso({ x, y }, gridSize);
-        this.drawStructureBed(screen, screen.y + tileDepthBias(renderTile) - 6);
-
-        for (const neighbor of [
-          { x: x + 1, y },
-          { x, y: y + 1 },
-        ]) {
-          if (isStructureAt(renderTiles, neighbor)) {
-            const neighborScreen = toIso(neighbor, gridSize);
-            this.drawStructureBridge(screen, neighborScreen);
-          }
-        }
-      }
-    }
-  }
-
-  private drawStructureBed(screen: { x: number; y: number }, depth: number): void {
-    const graphics = this.scene.add.graphics();
-    graphics.setDepth(depth);
-    graphics.fillStyle(0x020304, 0.42);
-    graphics.fillPoints(diamondAround(screen, 39, 20, 3), true, true);
-    graphics.fillStyle(0x3f4654, 0.36);
-    graphics.fillPoints(diamondAround(screen, 37, 18, 0), true, true);
-    graphics.lineStyle(2, 0xbfc6d4, 0.26);
-    graphics.strokePoints(diamondAround(screen, 37, 18, 0), true, true);
-    this.structureCohesionGraphics.push(graphics);
-  }
-
-  private drawStructureBridge(start: { x: number; y: number }, end: { x: number; y: number }): void {
-    const graphics = this.scene.add.graphics();
-    graphics.setDepth(Math.max(start.y, end.y) + 6);
-    graphics.lineStyle(17, 0x020304, 0.26);
-    graphics.beginPath();
-    graphics.moveTo(start.x, start.y + 4);
-    graphics.lineTo(end.x, end.y + 4);
-    graphics.strokePath();
-    graphics.lineStyle(13, 0x596171, 0.62);
-    graphics.beginPath();
-    graphics.moveTo(start.x, start.y);
-    graphics.lineTo(end.x, end.y);
-    graphics.strokePath();
-    graphics.lineStyle(4, 0xc4cad8, 0.42);
-    graphics.beginPath();
-    graphics.moveTo(start.x, start.y - 4);
-    graphics.lineTo(end.x, end.y - 4);
-    graphics.strokePath();
-    this.structureCohesionGraphics.push(graphics);
-  }
-
-  private drawGrid(width: number, height: number): void {
-    if (!this.overlay) {
-      return;
-    }
-    const gridSize = { width, height };
-    this.overlay.lineStyle(1, 0x6b7280, 0.2);
-    for (let y = 0; y < height; y += 1) {
-      for (let x = 0; x < width; x += 1) {
-        this.drawDiamond({ x, y }, gridSize, 0x6b7280, 0.16);
-      }
-    }
-  }
-
-  private drawCollision(result: DungeonGenerationResult): void {
-    if (!this.overlay) {
-      return;
-    }
-    for (let y = 0; y < result.level.height; y += 1) {
-      for (let x = 0; x < result.level.width; x += 1) {
-        if (!isPassable(result.level.tiles[y][x])) {
-          this.fillDiamond({ x, y }, result.level, 0xff375f, 0.16);
-        }
-      }
-    }
-  }
-
-  private drawConnectivity(result: DungeonGenerationResult): void {
-    if (!this.overlay) {
-      return;
-    }
-    for (const point of result.graph.reachableTiles) {
-      this.fillDiamond(point, result.level, 0x4ade80, 0.12);
-    }
-    for (const point of result.graph.unreachablePassableTiles) {
-      this.fillDiamond(point, result.level, 0xff0000, 0.55);
-    }
-  }
-
-  private drawZones(result: DungeonGenerationResult): void {
-    if (!this.overlay) {
-      return;
-    }
-    const colorByKind = {
-      object: 0xfacc15,
-      spawn: 0x60a5fa,
-      questLock: 0xc084fc,
-    } as const;
-    for (const zone of result.level.zones) {
-      this.drawRect(zone.rect, result.level, colorByKind[zone.kind]);
-    }
-  }
-
-  private drawObjects(result: DungeonGenerationResult): void {
-    if (!this.overlay) {
-      return;
-    }
-    for (const object of result.level.objects ?? []) {
-      this.drawRect(objectRect(object), result.level, objectColor(object.category), object.blocksMovement ? 0.34 : 0.2);
-    }
-  }
-
-  private drawRect(rect: GridRect, gridSize: GridSize, color: number, alpha = 0.22): void {
-    for (let y = rect.y; y < rect.y + rect.height; y += 1) {
-      for (let x = rect.x; x < rect.x + rect.width; x += 1) {
-        this.fillDiamond({ x, y }, gridSize, color, alpha);
-      }
-    }
-  }
-
-  private drawDiamond(point: GridPoint, gridSize: GridSize, color: number, alpha: number): void {
-    if (!this.overlay) {
-      return;
-    }
-    const points = diamondPoints(point, gridSize);
-    this.overlay.lineStyle(1, color, alpha);
-    this.overlay.strokePoints(points, true, true);
-  }
-
-  private fillDiamond(point: GridPoint, gridSize: GridSize, color: number, alpha: number): void {
-    if (!this.overlay) {
-      return;
-    }
-    const points = diamondPoints(point, gridSize);
-    this.overlay.fillStyle(color, alpha);
-    this.overlay.fillPoints(points, true, true);
   }
 }
 
@@ -296,54 +135,51 @@ function objectSnapshots(objects: readonly DungeonObjectPlacement[], gridSize: G
   });
 }
 
-function objectRect(object: DungeonObjectPlacement): GridRect {
-  return {
-    x: object.position.x,
-    y: object.position.y,
-    width: object.size.width,
-    height: object.size.height,
-  };
-}
-
-function objectColor(category: DungeonObjectCategory): number {
-  switch (category) {
-    case 'shrine':
-      return 0xf59e0b;
-    case 'lore':
-      return 0x22c55e;
-    case 'container':
-      return 0xd97706;
-    case 'tomb':
-      return 0x94a3b8;
-    case 'rack':
-      return 0xef4444;
+function semanticTileColor(tile: TileKind): number {
+  switch (tile) {
+    case 'floor':
+      return 0xb8a888;
+    case 'wall':
+      return 0x586072;
+    case 'door':
+      return 0xc8902f;
+    case 'stairUp':
+      return 0x4ade80;
+    case 'stairDown':
+      return 0xf87171;
+    default:
+      return 0x111827;
   }
 }
 
-function diamondPoints(point: GridPoint, gridSize: GridSize): Phaser.Math.Vector2[] {
-  const center = toIso(point, gridSize);
-  return [
-    new Phaser.Math.Vector2(center.x, center.y - ISO_TILE_FOOTPRINT.halfHeight),
-    new Phaser.Math.Vector2(center.x + ISO_TILE_FOOTPRINT.halfWidth, center.y),
-    new Phaser.Math.Vector2(center.x, center.y + ISO_TILE_FOOTPRINT.halfHeight),
-    new Phaser.Math.Vector2(center.x - ISO_TILE_FOOTPRINT.halfWidth, center.y),
-  ];
-}
-
-function diamondAround(center: { x: number; y: number }, halfWidth: number, halfHeight: number, yOffset: number): Phaser.Math.Vector2[] {
-  return [
-    new Phaser.Math.Vector2(center.x, center.y - halfHeight + yOffset),
-    new Phaser.Math.Vector2(center.x + halfWidth, center.y + yOffset),
-    new Phaser.Math.Vector2(center.x, center.y + halfHeight + yOffset),
-    new Phaser.Math.Vector2(center.x - halfWidth, center.y + yOffset),
-  ];
-}
-
-function isStructureAt(renderTiles: readonly (readonly RenderTileKind[])[], point: GridPoint): boolean {
-  const row = renderTiles[point.y];
-  if (!row) {
-    return false;
+function rawTileColor(value: number): number {
+  if (value === 0) {
+    return 0x111827;
   }
-  const tile = row[point.x];
-  return tile ? isCathedralStructureTile(tile) : false;
+  const hue = (value * 137.508) % 360;
+  const saturation = 0.62 + ((value >> 2) % 4) * 0.08;
+  const lightness = 0.42 + ((value >> 5) % 4) * 0.08;
+  return hslToRgbNumber(hue, saturation, lightness);
+}
+
+function hslToRgbNumber(hue: number, saturation: number, lightness: number): number {
+  const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
+  const huePrime = hue / 60;
+  const secondary = chroma * (1 - Math.abs((huePrime % 2) - 1));
+  const [redPrime, greenPrime, bluePrime] = huePrime < 1
+    ? [chroma, secondary, 0]
+    : huePrime < 2
+      ? [secondary, chroma, 0]
+      : huePrime < 3
+        ? [0, chroma, secondary]
+        : huePrime < 4
+          ? [0, secondary, chroma]
+          : huePrime < 5
+            ? [secondary, 0, chroma]
+            : [chroma, 0, secondary];
+  const match = lightness - chroma / 2;
+  const red = Math.round((redPrime + match) * 255);
+  const green = Math.round((greenPrime + match) * 255);
+  const blue = Math.round((bluePrime + match) * 255);
+  return (red << 16) | (green << 8) | blue;
 }

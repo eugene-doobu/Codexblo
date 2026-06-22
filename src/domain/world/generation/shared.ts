@@ -115,9 +115,14 @@ export function protectFootprint(protectedFootprints: Set<string>, position: Gri
 }
 
 export function inferDoorCandidates(tiles: TileKind[][]): GridPoint[] {
-  const doors: GridPoint[] = [];
+  const explicitDoors: GridPoint[] = [];
+  const inferredDoors: GridPoint[] = [];
   for (let y = 1; y < BASE_HEIGHT - 1; y += 1) {
     for (let x = 1; x < BASE_WIDTH - 1; x += 1) {
+      if (tiles[y][x] === 'door') {
+        explicitDoors.push({ x, y });
+        continue;
+      }
       if (tiles[y][x] !== 'floor') {
         continue;
       }
@@ -126,11 +131,11 @@ export function inferDoorCandidates(tiles: TileKind[][]): GridPoint[] {
       const blockedHorizontal = !PASSABLE_TILES.has(tiles[y][x - 1]) && !PASSABLE_TILES.has(tiles[y][x + 1]);
       const blockedVertical = !PASSABLE_TILES.has(tiles[y - 1][x]) && !PASSABLE_TILES.has(tiles[y + 1][x]);
       if ((horizontal && blockedVertical) || (vertical && blockedHorizontal)) {
-        doors.push({ x, y });
+        inferredDoors.push({ x, y });
       }
     }
   }
-  return doors.slice(0, 24);
+  return [...explicitDoors, ...inferredDoors].slice(0, Math.max(24, explicitDoors.length));
 }
 
 export function carveRoom(tiles: TileKind[][], room: GridRect): void {
